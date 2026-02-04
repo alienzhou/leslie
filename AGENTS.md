@@ -124,6 +124,10 @@ pnpm build
 
 ## Agent Work Guidelines
 
+### Language Requirements
+- **Code & Documentation**: Must be written in English
+- **Agent Conversation Output**: Follow the user's language (respond in the same language the user uses)
+
 ### Before Modifying Code
 1. Read relevant design decision documents (`.discuss/` directory)
 2. Understand the Objective → Thread → Artifact hierarchy
