@@ -9,9 +9,7 @@
 - Discussion complete, decisions captured
 
 ## ⚪ Pending (Deferred to Implementation)
-- ⏸️ SQLite schema design
-- ⏸️ Headless mode process management
-- ⏸️ Logging and debugging mechanism
+- (None - all design decisions captured)
 
 ## ✅ Confirmed Decisions
 
@@ -38,22 +36,21 @@
 |----|------------|---------|---------|
 | D01 | TypeScript | 5.x | Type safety |
 | D02 | oclif | 4.x | CLI framework |
-| D03 | better-sqlite3 | 11.x | SQLite driver |
-| D04 | zod | 3.x | Runtime validation |
-| D05 | pino | 9.x | Logging |
+| D03 | zod | 3.x | Runtime validation |
+| D04 | pino | 9.x | Logging |
+| D05 | proper-lockfile | latest | File locking for JSON storage |
 
 ### Storage Layer
 | ID | Decision | Rationale |
 |----|----------|-----------|
-| T05 | SQLite as structured storage | Embedded, zero-config, single-file portable |
-| T06 | File system auxiliary storage | For artifacts, extended configs, etc. |
+| T05 | JSON file as metadata storage | Simple, human-readable, Agent-friendly (see [Thread Metadata Storage](../../2026-02-08/thread-metadata-storage/outline.md)) |
+| T06 | File system storage | For artifacts, thread relations, extended configs |
 
 ### Interface & Interaction
 | ID | Decision | Rationale |
 |----|----------|-----------|
 | T07 | CLI as MVP interface (oclif) | Minimal, plugin-based, automation-friendly |
-| T08 | Support Headless mode | Agent runs in background, CLI can connect to view |
-| T09 | ACP Client for backend connection | Replaceable with any ACP-compatible Agent |
+| T08 | ACP Client for backend connection | Replaceable with any ACP-compatible Agent |
 
 ### Product Form
 | ID | Decision | Rationale |
@@ -73,12 +70,16 @@
 |----|----------|--------|
 | R01 | Custom Agent kernel | Not for MVP, use Claude Code first |
 | R02 | ACP Server mode | Thread is runtime instruction, no need to expose as service |
+| R03 | SQLite as structured storage | Over-engineering for MVP, JSON file is sufficient |
+| R04 | Headless mode | Deferred from MVP scope, may revisit later |
 
 ## 📚 Related Discussions
 - [Multi-Thread Agent Orchestration Design](../multi-thread-agent-orchestration/outline.md) - Architecture and protocol decisions (D01-D26)
 
 ## 📂 Decision Documents
 - [T-tech-stack-selection](./decisions/T-tech-stack-selection.md) - Tech stack selection summary
+- [D-logging-debugging](./decisions/D-logging-debugging.md) - Logging and debugging system
+- [D-error-handling](./decisions/D-error-handling.md) - Error handling strategy
 
 ## 📝 Architecture Diagrams
 

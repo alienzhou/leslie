@@ -17,7 +17,7 @@
 |----|----------|----------|
 | D01 | ACP as Agent communication protocol | [D01-acp-protocol-selection](./decisions/D01-acp-protocol-selection.md) |
 | D02 | Agent peer collaboration first, central coordinator as fallback | [D02-coordination-mode](./decisions/D02-coordination-mode.md) |
-| D03 | Reuse existing Tier 1-3 Thread primitives | (See: Thread Primitives Design from stream repo) |
+| D03 | Reuse existing Tier 1-3 Thread primitives | [D03-thread-primitives](./decisions/D03-thread-primitives.md) |
 
 ### Sharing Mechanism
 | ID | Decision | Document |
