@@ -1,0 +1,20 @@
+{
+  "edfa8419-bb3e-41ab-a5ac-daa96abd0d81": {
+    "sessionId": "edfa8419-bb3e-41ab-a5ac-daa96abd0d81",
+    "agent": "claude-code",
+    "startedAt": 1771629165038,
+    "source": "startup",
+    "model": "kwaipilot-default",
+    "transcriptPath": "/Users/zhouhongxuan/.claude/projects/-Users-zhouhongxuan-program-works-vibe-x-ai-leslie/edfa8419-bb3e-41ab-a5ac-daa96abd0d81.jsonl",
+    "cwd": "/Users/zhouhongxuan/program/works/vibe-x-ai/leslie"
+  },
+  "4872b12d-ec81-403d-9be5-864269e0c28e": {
+    "sessionId": "4872b12d-ec81-403d-9be5-864269e0c28e",
+    "agent": "claude-code",
+    "startedAt": 1771630229435,
+    "source": "startup",
+    "model": "kwaipilot-default",
+    "transcriptPath": "/Users/zhouhongxuan/.claude/projects/-Users-zhouhongxuan-program-works-vibe-x-ai-leslie/4872b12d-ec81-403d-9be5-864269e0c28e.jsonl",
+    "cwd": "/Users/zhouhongxuan/program/works/vibe-x-ai/leslie"
+  }
+}
