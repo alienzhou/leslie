@@ -1,0 +1,19 @@
+{
+  "name": "@vibe-x-ai/leslie-core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --no-error-on-unmatched-pattern",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pino": "^10.0.0",
+    "proper-lockfile": "^4.1.2",
+    "semver": "^7.7.3",
+    "zod": "^3.25.76"
+  }
+}
