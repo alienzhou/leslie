@@ -26,6 +26,19 @@ Use this skill when you need thread dependency and reference information.
 - Find reverse references: `relations[threadId].referenced_by`
 - Find dependency chain: DFS over `depends_on`
 
+## CLI Troubleshooting
+
+If you get an error like `leslie: command not found`:
+
+1. Install Leslie CLI globally:
+   - `npm install -g @vibe-x-ai/leslie`
+   - or `pnpm add -g @vibe-x-ai/leslie`
+2. Verify installation:
+   - `leslie --help`
+3. If command is still missing, check your global bin path:
+   - `npm config get prefix`
+   - make sure `<prefix>/bin` is in `PATH`
+
 ## Schema Summary
 
 ```json
