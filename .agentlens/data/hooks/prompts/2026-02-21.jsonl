@@ -1,9 +1,0 @@
-{"sessionId":"16265af2-7b8a-430c-9757-5fa20585f692","prompt":"add,commit and push","timestamp":1771629139393}
-{"sessionId":"edfa8419-bb3e-41ab-a5ac-daa96abd0d81","prompt":"看下讨论内容，是否还有需要补充的，是否需要生成 specs 对应文档","timestamp":1771629197491}
-{"sessionId":"edfa8419-bb3e-41ab-a5ac-daa96abd0d81","prompt":"生成 specs，生成的 spec 如果平铺在里面，未来有更新的是不是不适合整理结构呀？","timestamp":1771629280764}
-{"sessionId":"edfa8419-bb3e-41ab-a5ac-daa96abd0d81","prompt":"可以生成在 specs 这个目录里面。\n\n然后生成什么样的结构呢？我感觉如果把内容全部平铺在里面肯定不好，是不是需要再在里面整理一个目录结构？例如：\n1. 叫 V1.0\n2. 或者是根据启动情况命名\n\n你觉得要叫什么样的目录结构？在下面再建子目录会比较好。\n\n这样你可以看一下一些文档整理的技能，还有就是做好文档的内容。因为技术文档尽量不要有太多的实际代码，尽量包含更多的设计类内容。","timestamp":1771629524573}
-{"sessionId":"edfa8419-bb3e-41ab-a5ac-daa96abd0d81","prompt":"0.1 开始，语言英文， tech-doc-organizer","timestamp":1771630075679}
-{"sessionId":"edfa8419-bb3e-41ab-a5ac-daa96abd0d81","prompt":"对，我看下面已经有了相应的文档，我觉得不需要重复去建设和设计。\n\n目前模块拆分也挺好的，版本拆分是不是不太好？你看一下当前的一些文档，确认是否需要调整和整理。","timestamp":1771630116773}
-{"sessionId":"4872b12d-ec81-403d-9be5-864269e0c28e","prompt":"git 切换到 git@github.com:alienzhou/leslie.git","timestamp":1771630234738}
-{"sessionId":"edfa8419-bb3e-41ab-a5ac-daa96abd0d81","prompt":"更新","timestamp":1771630265903}
-{"sessionId":"4872b12d-ec81-403d-9be5-864269e0c28e","prompt":"add、commit、push","timestamp":1771630305307}
