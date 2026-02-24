@@ -10,11 +10,13 @@ discussions:
     notes: []
   2026-02-24/sdk-replaces-acp:
     outline:
-      mtime: 1771919177.7004175
-      change_count: 3
+      mtime: 1771919261.7141654
+      change_count: 0
     decisions:
     - name: D29-sdk-replaces-acp.md
       mtime: 1771917060.8653553
+    - name: D30-sdk-usage-conventions.md
+      mtime: 1771919248.5965881
     notes: []
   2026-02-04/multi-thread-agent-orchestration:
     outline:
