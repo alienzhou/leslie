@@ -4,12 +4,13 @@
 > Context: 实现 spawn 实际启动 Agent 时，发现 ACP 协议层（D01, D16-17）可被官方 SDK 替代
 
 ## 🔵 Current Focus
-- Q5: `query()` 的 Options 如何配置？Leslie 应该控制哪些参数，透传哪些？
-- Q6: permissionMode 策略 — 默认 `acceptEdits`，通过 `canUseTool` 支持人工介入
+- Q6: permissionMode = 默认前台交互审批，所有工具都需用户确认
+- Q11: **多 Thread 前台交互模型** — 多个 Thread 同时需要审批时如何展示？CLI 能否分区/多 Tab？
 
 ## ⚪ Pending
 - Q8: session resume 如何映射到 SDK 的 `options.resume`？
 - Q10: 流式输出的消费方式——CLI 展示格式、日志持久化
+- Q12: CLI TUI 框架选型（Ink? blessed? 其他？）
 
 ## ✅ Confirmed
 
@@ -23,7 +24,11 @@
 
 ### Q9 → settingSources: ["project"]
 - 加载项目配置（CLAUDE.md/AGENTS.md），不加载 user 级配置
-- 保证 Agent 了解项目规范，同时避免个人配置干扰
+
+### Q6 → canUseTool 策略 B：交互式审批
+- 默认前台模式，所有工具调用需用户确认
+- permissionMode: `default`（不自动批准任何操作）
+- 通过 `canUseTool` 回调展示工具请求，等用户 y/n
 
 ### 以下设计不变
 - Thread = Claude Code 进程（D16 核心）
@@ -32,79 +37,41 @@
 - CLI 设计（D12-15, D27-28）
 
 ## ❌ Rejected
-- 继续使用 ACP 协议层自行实现（工作量大、与本地子进程模式不匹配）
+- 继续使用 ACP 协议层自行实现
+- canUseTool 方案 A（默认全部 allow）— 用户希望保留控制权
 
 ## 📚 Background
 
-### SDK 权限体系
+### 多 Thread 前台交互 — 核心矛盾
 
-权限检查顺序：Hooks → Permission Rules → Permission Mode → `canUseTool` callback
+三个目标互相冲突：
+1. **透明性**：看到每个 Thread 在做什么
+2. **控制权**：审批每个工具调用
+3. **并行性**：多 Thread 同时运行
 
-#### permissionMode 选项
-| Mode | 行为 | 适用场景 |
-|------|------|----------|
-| `default` | 不自动批准任何工具 | 需要完全控制 |
-| `acceptEdits` | 自动批准文件编辑（Write/Edit/mkdir/rm 等） | **Leslie 默认** |
-| `bypassPermissions` | 跳过所有权限检查 | CI/完全信任 |
-| `plan` | 不执行工具，只规划 | 方案预览 |
+如果所有 Thread 都前台交互审批，用户成为瓶颈，并行性丧失。
 
-#### canUseTool 回调
-```typescript
-canUseTool: async (toolName, input) => {
-  // 被 permissionMode 未覆盖的工具会走到这里（如 Bash 命令）
-  // 可以：allow / deny / 修改 input 后 allow
-  return { behavior: "allow", updatedInput: input };
-  // 或
-  return { behavior: "deny", message: "reason" };
-}
-```
+### CLI 多区域/多 Tab 技术方案
 
-可以在运行时动态切换 mode：`await q.setPermissionMode("bypassPermissions")`
+| 方案 | 技术 | 复杂度 | 体验 |
+|------|------|--------|------|
+| A. 单 Thread 前台 | 基本 readline | 低 | 一次只操作一个 Thread |
+| B. 多 Terminal 窗口 | 每个 Thread 一个 shell | 低 | 依赖终端模拟器 |
+| C. TUI 分区 | Ink / blessed / terminal-kit | 中 | 类 htop/lazygit |
+| D. Focus + Queue | 一个前台 + 审批队列 | 中 | 类通知中心 |
+| E. Web UI | packages/web | 高 | 最灵活 |
 
-### SDK 核心 API
-
-```typescript
-const q = query({
-  prompt: "实现用户注册功能",
-  options: {
-    cwd: "/path/to/project",
-    permissionMode: "acceptEdits",
-    settingSources: ["project"],
-    systemPrompt: { type: "preset", preset: "claude_code" },
-    canUseTool: async (toolName, input) => { /* ... */ },
-    abortController: new AbortController(),
-  }
-});
-for await (const msg of q) { /* ... */ }
-```
-
-### SDKMessage 类型
-| Type | 含义 | 包含信息 |
-|------|------|----------|
-| `assistant` | Agent 回复 | 文本、tool_use blocks |
-| `user` | 用户输入 | 原始 prompt |
-| `result` | 最终结果 | duration, cost, usage, errors |
-| `system` | 系统消息 | 状态变更等 |
-
-### 关键 Options
-| Option | 类型 | Leslie 关注度 |
-|--------|------|-------------|
-| `cwd` | string | 高 — Thread 工作目录 |
-| `permissionMode` | enum | 高 — 决定 Agent 自主程度 |
-| `canUseTool` | callback | 高 — 人工介入审批 |
-| `settingSources` | array | 中 — 是否加载项目配置 |
-| `systemPrompt` | string/preset | 高 — 可注入 Thread context |
-| `maxTurns` | number | 中 — 防止无限循环 |
-| `maxBudgetUsd` | number | 低 — 成本控制 |
-| `resume` | string | 高 — session 恢复 |
-| `abortController` | AbortController | 高 — 取消/暂停 |
-| `tools` | array/preset | 中 — 工具限制 |
-| `mcpServers` | Record | 低 — MCP 扩展 |
+### Node.js TUI 框架
+| 框架 | 特点 | Stars | 适合 |
+|------|------|-------|------|
+| **Ink** | React for CLI，组件化 | 27k+ | 复杂交互式 CLI |
+| **blessed** | 底层终端 UI，类 ncurses | 11k+ | Dashboard 类 |
+| **terminal-kit** | 全功能终端工具包 | 3k+ | 低层控制 |
+| **@clack/prompts** | 漂亮的交互式提示 | 5k+ | 简单 prompt |
 
 ## 🔗 Related
 - [原始 outline](../../2026-02-04/multi-thread-agent-orchestration/outline.md)
-- [D01 ACP 选型](../../2026-02-04/multi-thread-agent-orchestration/decisions/D01-acp-protocol-selection.md) — superseded
-- [D16-17 ACP 集成](../../2026-02-04/multi-thread-agent-orchestration/decisions/D16-17-acp-integration.md) — 协议层 superseded
+- [D27-28 CLI 双能力](../../2026-02-04/multi-thread-agent-orchestration/decisions/D27-28-cli-dual-capabilities.md) — Human 交互层
 
 ## 📂 Discussion Artifacts
 
