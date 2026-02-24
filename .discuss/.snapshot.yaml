@@ -1,0 +1,10 @@
+version: 1
+config:
+  stale_threshold: 3
+discussions:
+  2026-02-24/leslie-project-analysis:
+    outline:
+      mtime: 0.0
+      change_count: 0
+    decisions: []
+    notes: []

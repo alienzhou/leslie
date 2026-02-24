@@ -1,4 +1,5 @@
 .agentlens/
+.codeflicker/
 
 # dependencies
 node_modules/
