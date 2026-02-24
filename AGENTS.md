@@ -16,7 +16,7 @@
 Top-level task unit. All Threads must belong to an Objective. An Objective is complete when all its Threads are terminated.
 
 ### 2. Thread
-Execution unit, corresponding to an Agent Session.
+Execution unit, corresponding to a Claude Code process (via `@anthropic-ai/claude-agent-sdk`).
 
 ### 3. Human-Agent Parity
 Humans and Agents are equal:
@@ -46,7 +46,7 @@ leslie/
 │   │   │   ├── objective/   # Objective management
 │   │   │   ├── thread/      # Thread lifecycle
 │   │   │   ├── storage/     # SQLite + File system
-│   │   │   └── acp/         # ACP Client
+│   │   │   └── acp/         # Agent Runner (SDK-based)
 │   │   └── package.json
 │   │
 │   ├── cli/                 # @vibe-x-ai/leslie-cli - CLI commands
@@ -72,7 +72,8 @@ Important design decisions are documented in the `.discuss/` directory:
 Key decisions:
 | ID | Decision | Document |
 |----|----------|----------|
-| D01 | ACP as Agent communication protocol | decisions/D01-acp-protocol-selection.md |
+| D01 | ~~ACP~~ → D29 Claude Agent SDK | decisions/D01-acp-protocol-selection.md |
+| D29 | Claude Agent SDK replaces ACP | .discuss/2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md |
 | D12-15 | CLI design specification | decisions/D12-15-cli-design.md |
 | D22 | 🔴 Human-Agent Parity | decisions/D22-human-agent-parity.md |
 | D23-26 | Objective/Thread model | outline.md |
@@ -143,10 +144,11 @@ pnpm build
 - File artifacts → File system
 - Use `better-sqlite3` synchronous API
 
-### ACP Integration
-- Leslie acts as ACP Client
-- No need to implement ACP Server
-- Backend connects to Claude Code
+### Claude Code Integration
+- Leslie uses `@anthropic-ai/claude-agent-sdk` to spawn and manage Claude Code processes
+- Each Thread corresponds to one `query()` call (SDK's primary API)
+- Streaming output via `AsyncGenerator<SDKMessage>`
+- See [D29](/.discuss/2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md) for details
 
 ## Key Constraints
 
@@ -157,6 +159,6 @@ pnpm build
 
 ## External References
 
-- [ACP Official Documentation](https://agentclientprotocol.com/)
+- [Claude Agent SDK (TypeScript)](https://github.com/anthropics/claude-agent-sdk-typescript)
 - [oclif Documentation](https://oclif.io/)
 - [better-sqlite3 Documentation](https://github.com/WiseLibs/better-sqlite3)

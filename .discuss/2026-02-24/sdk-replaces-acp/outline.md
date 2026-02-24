@@ -4,31 +4,32 @@
 > Context: 实现 spawn 实际启动 Agent 时，发现 ACP 协议层（D01, D16-17）可被官方 SDK 替代
 
 ## 🔵 Current Focus
-- Q1: D01（ACP 协议选型）是否需要 supersede？SDK 和 ACP 的关系是什么？
-- Q2: D16-17（ACP 集成方案）如何更新？哪些设计仍然成立？
+(All questions resolved)
 
 ## ⚪ Pending
-- Q3: 现有 `acp/` 目录下的代码如何处理（HttpAcpClient, MockAcpClient）？
-- Q4: 架构图和 AGENTS.md 中的 ACP 引用是否需要更新？
+(Empty)
 
 ## ✅ Confirmed
-(Empty)
+
+### D29: SDK 替代 ACP 协议层
+- **决策**: 采用 `@anthropic-ai/claude-agent-sdk` 替代 ACP 协议层
+- **文档**: [D29-sdk-replaces-acp](./decisions/D29-sdk-replaces-acp.md)
+- **影响范围**:
+  - D01 (ACP 选型) → superseded
+  - D16 (Thread = Session) → 协议层 superseded，核心设计保留
+  - D17 (Skill 注入) → 不变
+  - 代码: 移除 HttpAcpClient/MockAcpClient，新建 AgentRunner
+
+### 以下设计不变
+- Thread = Claude Code 进程（D16 核心）
+- Skill 注入能力（D17）
+- Objective-Thread 模型（D23-26）
+- CLI 设计（D12-15, D27-28）
 
 ## ❌ Rejected
-(Empty)
+- 继续使用 ACP 协议层自行实现（工作量大、与本地子进程模式不匹配）
 
 ## 📚 Background
-
-### 原始决策（2026-02-04）
-- **D01**: 选择 ACP 作为 Agent 通信协议（JSON-RPC 2.0）
-- **D16**: Thread = ACP Session，每个 Thread 对应一个 Claude Code 进程
-- **D17**: 通过 Skill 注入能力，而非 MCP
-
-### 现状（2026-02-24）
-- `@anthropic-ai/claude-agent-sdk`（v0.2.50）已成熟，提供 `query()` 一站式封装
-- SDK 内部不走 ACP 协议，而是用 Claude Code CLI 的原生 `stream-json` 格式
-- 现有 `HttpAcpClient` 基于 HTTP 传输，与本地子进程模式不匹配
-- ACP 更适合编辑器场景（Zed 等），Leslie 作为 CLI 编排器用 SDK 更直接
 
 ### 关键差异
 
@@ -44,5 +45,10 @@
 
 ## 🔗 Related
 - [原始 outline](../../2026-02-04/multi-thread-agent-orchestration/outline.md)
-- [D01 ACP 选型](../../2026-02-04/multi-thread-agent-orchestration/decisions/D01-acp-protocol-selection.md)
-- [D16-17 ACP 集成](../../2026-02-04/multi-thread-agent-orchestration/decisions/D16-17-acp-integration.md)
+- [D01 ACP 选型](../../2026-02-04/multi-thread-agent-orchestration/decisions/D01-acp-protocol-selection.md) — superseded
+- [D16-17 ACP 集成](../../2026-02-04/multi-thread-agent-orchestration/decisions/D16-17-acp-integration.md) — 协议层 superseded
+
+## 📂 Discussion Artifacts
+
+### Decisions
+- [D29-sdk-replaces-acp](./decisions/D29-sdk-replaces-acp.md) — SDK 替代 ACP 协议层

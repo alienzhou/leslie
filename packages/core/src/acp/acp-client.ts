@@ -1,3 +1,8 @@
+/**
+ * @deprecated Superseded by AgentRunner (D29). Will be removed in next major version.
+ * Use `@anthropic-ai/claude-agent-sdk` query() instead.
+ */
+
 import { LeslieError } from '../errors/cli-error.js';
 import { ERROR_CODES } from '../errors/error-codes.js';
 import type { AcpClient, AcpPromptResult, AcpSession } from './acp-types.js';

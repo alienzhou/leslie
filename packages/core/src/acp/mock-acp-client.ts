@@ -1,3 +1,7 @@
+/**
+ * @deprecated Superseded by AgentRunner (D29). Will be removed in next major version.
+ */
+
 import { generateId } from '../utils/id.js';
 import type { AcpClient, AcpPromptResult, AcpSession } from './acp-types.js';
 

@@ -1,9 +1,11 @@
 # D01: Technology Stack Selection - ACP as Agent Communication Protocol
 
-> Status: ✅ Confirmed
+> Status: ⚠️ Superseded by [D29](../../../2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md)
 > Decision Date: 2026-02-04
+> Superseded Date: 2026-02-24
+> Superseded Reason: `@anthropic-ai/claude-agent-sdk` provides higher-level abstraction; ACP protocol layer unnecessary for CLI orchestrator use case.
 
-## Decision
+## Decision (Original)
 Adopt Agent Client Protocol (ACP) as the standard protocol for calling Claude Code Agent.
 
 ## Background

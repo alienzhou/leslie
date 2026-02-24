@@ -1,3 +1,7 @@
+/**
+ * @deprecated Superseded by AgentRunner (D29). Will be removed in next major version.
+ */
+
 import type { TranscriptEntry } from '../assets/transcript-writer.js';
 
 export interface AcpSession {

@@ -15,7 +15,7 @@
 ### Technology Selection
 | ID | Decision | Document |
 |----|----------|----------|
-| D01 | ACP as Agent communication protocol | [D01-acp-protocol-selection](./decisions/D01-acp-protocol-selection.md) |
+| D01 | ~~ACP as Agent communication protocol~~ ⚠️ Superseded by [D29](../2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md) | [D01-acp-protocol-selection](./decisions/D01-acp-protocol-selection.md) |
 | D02 | Agent peer collaboration first, central coordinator as fallback | [D02-coordination-mode](./decisions/D02-coordination-mode.md) |
 | D03 | Reuse existing Tier 1-3 Thread primitives | [D03-thread-primitives](./decisions/D03-thread-primitives.md) |
 
@@ -38,7 +38,7 @@
 ### Integration
 | ID | Decision | Document |
 |----|----------|----------|
-| D16-17 | Thread=Session, Skill-based capability injection | [D16-17-acp-integration](./decisions/D16-17-acp-integration.md) |
+| D16-17 | Thread=~~Session~~Process, Skill-based capability injection ⚠️ Protocol layer superseded by [D29](../2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md) | [D16-17-acp-integration](./decisions/D16-17-acp-integration.md) |
 
 ### Objective & Thread Model
 | ID | Decision | Document |
@@ -174,7 +174,7 @@
 │   • Objective Manager                                            │
 │   • Thread Manager                                               │
 │   • Storage (SQLite + FS)                                        │
-│   • ACP Client                                                   │
+│   • Agent Runner (SDK-based, replaces ACP Client)                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

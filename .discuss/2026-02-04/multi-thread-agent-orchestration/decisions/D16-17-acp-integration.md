@@ -1,16 +1,18 @@
 # D16-17: ACP Integration Plan
 
-> Status: ✅ Confirmed
+> Status: ⚠️ Partially Superseded by [D29](../../../2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md)
 > Decision Date: 2026-02-04
+> Superseded Date: 2026-02-24
+> Superseded Scope: D16 protocol layer (ACP → SDK); D16 core design and D17 remain valid.
 
 ## Core Decisions
 
-### D16: Thread = ACP Session
-- Each Thread corresponds to one ACP Session
-- Each Thread runs an independent Claude Code process
+### D16: Thread = ~~ACP Session~~ Claude Code Process (core design preserved)
+- Each Thread corresponds to one ~~ACP Session~~ SDK `query()` call
+- Each Thread runs an independent Claude Code process (**unchanged**)
 - Not considering API rate limiting for now
 
-### D17: Capability Injection Method
+### D17: Capability Injection Method (**unchanged**)
 - **Not through MCP** to directly inject thread commands to Agent
 - **Through Skill mechanism**: Agent learns Thread operations by loading Skills
 
@@ -46,15 +48,15 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## ACP Method Mapping
+## ~~ACP~~ Method Mapping (Updated → SDK)
 
-| Thread CLI | ACP Method |
-|------------|------------|
-| `thread spawn` | `session/new` |
-| `thread prompt` | `session/prompt` |
-| `thread status` | Local state query |
-| `thread lifecycle done` | Close Session |
-| `thread lifecycle cancel` | `session/cancel` |
+| Thread CLI | ~~ACP Method~~ | SDK Method (D29) |
+|------------|------------|------------|
+| `thread spawn` | ~~`session/new`~~ | `query({ prompt })` |
+| `thread prompt` | ~~`session/prompt`~~ | streaming input |
+| `thread status` | Local state query | Local state query |
+| `thread lifecycle done` | ~~Close Session~~ | generator return |
+| `thread lifecycle cancel` | ~~`session/cancel`~~ | `abortController.abort()` |
 
 ## Components to Implement
 
