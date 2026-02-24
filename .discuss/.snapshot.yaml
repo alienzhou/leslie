@@ -10,8 +10,8 @@ discussions:
     notes: []
   2026-02-24/sdk-replaces-acp:
     outline:
-      mtime: 1771917126.673469
-      change_count: 0
+      mtime: 1771917548.349648
+      change_count: 1
     decisions:
     - name: D29-sdk-replaces-acp.md
       mtime: 1771917060.8653553

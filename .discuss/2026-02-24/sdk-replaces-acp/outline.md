@@ -4,10 +4,14 @@
 > Context: 实现 spawn 实际启动 Agent 时，发现 ACP 协议层（D01, D16-17）可被官方 SDK 替代
 
 ## 🔵 Current Focus
-(All questions resolved)
+- Q5: `query()` 的 Options 如何配置？Leslie 应该控制哪些参数，透传哪些？
+- Q6: permissionMode 策略——Agent 执行时应该自动 bypass 还是让用户控制？
+- Q7: spawn 是单轮（发 prompt 等结果）还是多轮（支持持续对话）？
 
 ## ⚪ Pending
-(Empty)
+- Q8: session resume 如何映射到 SDK 的 `options.resume`？
+- Q9: settingSources 策略——Leslie 是隔离运行还是加载项目配置？
+- Q10: 流式输出的消费方式——CLI 展示格式、日志持久化
 
 ## ✅ Confirmed
 
@@ -18,7 +22,7 @@
   - D01 (ACP 选型) → superseded
   - D16 (Thread = Session) → 协议层 superseded，核心设计保留
   - D17 (Skill 注入) → 不变
-  - 代码: 移除 HttpAcpClient/MockAcpClient，新建 AgentRunner
+  - 代码: 已删除 HttpAcpClient/MockAcpClient/AcpTypes
 
 ### 以下设计不变
 - Thread = Claude Code 进程（D16 核心）
@@ -31,7 +35,51 @@
 
 ## 📚 Background
 
-### 关键差异
+### SDK 核心 API
+
+```typescript
+// 启动 Agent
+const q = query({
+  prompt: "实现用户注册功能",
+  options: {
+    cwd: "/path/to/project",
+    permissionMode: "bypassPermissions",
+    settingSources: ["project"],
+    systemPrompt: { type: "preset", preset: "claude_code" },
+    maxTurns: 50,
+    // ...
+  }
+});
+
+// 流式消费
+for await (const msg of q) {
+  // msg.type: "assistant" | "user" | "result" | "system" | ...
+}
+```
+
+### SDKMessage 类型
+| Type | 含义 | 包含信息 |
+|------|------|----------|
+| `assistant` | Agent 回复 | 文本、tool_use blocks |
+| `user` | 用户输入 | 原始 prompt |
+| `result` | 最终结果 | duration, cost, usage, errors |
+| `system` | 系统消息 | 状态变更等 |
+
+### 关键 Options
+| Option | 类型 | Leslie 关注度 |
+|--------|------|-------------|
+| `cwd` | string | 高 — Thread 工作目录 |
+| `permissionMode` | enum | 高 — 决定 Agent 自主程度 |
+| `settingSources` | array | 中 — 是否加载项目配置 |
+| `systemPrompt` | string/preset | 高 — 可注入 Thread context |
+| `maxTurns` | number | 中 — 防止无限循环 |
+| `maxBudgetUsd` | number | 低 — 成本控制 |
+| `resume` | string | 高 — session 恢复 |
+| `abortController` | AbortController | 高 — 取消/暂停 |
+| `tools` | array/preset | 中 — 工具限制 |
+| `mcpServers` | Record | 低 — MCP 扩展 |
+
+### 关键差异对比表
 
 | 维度 | ACP 协议 | Claude Agent SDK |
 |------|----------|-----------------|
