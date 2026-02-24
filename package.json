@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Leslie multi-thread agent orchestration framework",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
@@ -23,7 +24,7 @@
     "vitest": "^4.0.7"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "pnpm": ">=9.0.0"
+    "node": "22.21.x",
+    "pnpm": "9.15.x"
   }
 }
