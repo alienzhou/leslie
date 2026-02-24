@@ -33,6 +33,7 @@ Humans and Agents are equal:
 | pnpm | 9.x | Package manager |
 | oclif | 4.x | CLI framework |
 | better-sqlite3 | 11.x | SQLite driver |
+| @anthropic-ai/claude-agent-sdk | 0.2.x | Claude Code subprocess management |
 | zod | 3.x | Runtime validation |
 | pino | 9.x | Logging |
 
@@ -74,6 +75,7 @@ Key decisions:
 |----|----------|----------|
 | D01 | ~~ACP~~ → D29 Claude Agent SDK | decisions/D01-acp-protocol-selection.md |
 | D29 | Claude Agent SDK replaces ACP | .discuss/2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md |
+| D30 | SDK usage conventions | .discuss/2026-02-24/sdk-replaces-acp/decisions/D30-sdk-usage-conventions.md |
 | D12-15 | CLI design specification | decisions/D12-15-cli-design.md |
 | D22 | 🔴 Human-Agent Parity | decisions/D22-human-agent-parity.md |
 | D23-26 | Objective/Thread model | outline.md |
@@ -144,11 +146,14 @@ pnpm build
 - File artifacts → File system
 - Use `better-sqlite3` synchronous API
 
-### Claude Code Integration
+### Claude Code Integration (D29 + D30)
 - Leslie uses `@anthropic-ai/claude-agent-sdk` to spawn and manage Claude Code processes
-- Each Thread corresponds to one `query()` call (SDK's primary API)
-- Streaming output via `AsyncGenerator<SDKMessage>`
-- See [D29](/.discuss/2026-02-24/sdk-replaces-acp/decisions/D29-sdk-replaces-acp.md) for details
+- Each Thread corresponds to one `query()` call, single-turn mode
+- `permissionMode: "default"` — all tool calls require user approval via `canUseTool`
+- `settingSources: ["project"]` — load project settings (CLAUDE.md/AGENTS.md)
+- `systemPrompt: { type: "preset", preset: "claude_code" }`
+- Session resume via `options.resume` with `session_id` stored in ThreadInfo
+- Streaming output via `AsyncGenerator<SDKMessage>`, transcript persisted to file
 
 ## Key Constraints
 
