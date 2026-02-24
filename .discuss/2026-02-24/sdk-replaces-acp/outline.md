@@ -5,12 +5,10 @@
 
 ## 🔵 Current Focus
 - Q5: `query()` 的 Options 如何配置？Leslie 应该控制哪些参数，透传哪些？
-- Q6: permissionMode 策略——Agent 执行时应该自动 bypass 还是让用户控制？
-- Q7: spawn 是单轮（发 prompt 等结果）还是多轮（支持持续对话）？
+- Q6: permissionMode 策略 — 默认 `acceptEdits`，通过 `canUseTool` 支持人工介入
 
 ## ⚪ Pending
 - Q8: session resume 如何映射到 SDK 的 `options.resume`？
-- Q9: settingSources 策略——Leslie 是隔离运行还是加载项目配置？
 - Q10: 流式输出的消费方式——CLI 展示格式、日志持久化
 
 ## ✅ Confirmed
@@ -18,11 +16,14 @@
 ### D29: SDK 替代 ACP 协议层
 - **决策**: 采用 `@anthropic-ai/claude-agent-sdk` 替代 ACP 协议层
 - **文档**: [D29-sdk-replaces-acp](./decisions/D29-sdk-replaces-acp.md)
-- **影响范围**:
-  - D01 (ACP 选型) → superseded
-  - D16 (Thread = Session) → 协议层 superseded，核心设计保留
-  - D17 (Skill 注入) → 不变
-  - 代码: 已删除 HttpAcpClient/MockAcpClient/AcpTypes
+
+### Q7 → 先做单轮
+- spawn 发一个 intent，Agent 自主跑完（单轮 `query(prompt: string)`）
+- 后续 inject 通过 `resume` 起新 `query()` 接续 session
+
+### Q9 → settingSources: ["project"]
+- 加载项目配置（CLAUDE.md/AGENTS.md），不加载 user 级配置
+- 保证 Agent 了解项目规范，同时避免个人配置干扰
 
 ### 以下设计不变
 - Thread = Claude Code 进程（D16 核心）
@@ -35,26 +36,46 @@
 
 ## 📚 Background
 
+### SDK 权限体系
+
+权限检查顺序：Hooks → Permission Rules → Permission Mode → `canUseTool` callback
+
+#### permissionMode 选项
+| Mode | 行为 | 适用场景 |
+|------|------|----------|
+| `default` | 不自动批准任何工具 | 需要完全控制 |
+| `acceptEdits` | 自动批准文件编辑（Write/Edit/mkdir/rm 等） | **Leslie 默认** |
+| `bypassPermissions` | 跳过所有权限检查 | CI/完全信任 |
+| `plan` | 不执行工具，只规划 | 方案预览 |
+
+#### canUseTool 回调
+```typescript
+canUseTool: async (toolName, input) => {
+  // 被 permissionMode 未覆盖的工具会走到这里（如 Bash 命令）
+  // 可以：allow / deny / 修改 input 后 allow
+  return { behavior: "allow", updatedInput: input };
+  // 或
+  return { behavior: "deny", message: "reason" };
+}
+```
+
+可以在运行时动态切换 mode：`await q.setPermissionMode("bypassPermissions")`
+
 ### SDK 核心 API
 
 ```typescript
-// 启动 Agent
 const q = query({
   prompt: "实现用户注册功能",
   options: {
     cwd: "/path/to/project",
-    permissionMode: "bypassPermissions",
+    permissionMode: "acceptEdits",
     settingSources: ["project"],
     systemPrompt: { type: "preset", preset: "claude_code" },
-    maxTurns: 50,
-    // ...
+    canUseTool: async (toolName, input) => { /* ... */ },
+    abortController: new AbortController(),
   }
 });
-
-// 流式消费
-for await (const msg of q) {
-  // msg.type: "assistant" | "user" | "result" | "system" | ...
-}
+for await (const msg of q) { /* ... */ }
 ```
 
 ### SDKMessage 类型
@@ -70,6 +91,7 @@ for await (const msg of q) {
 |--------|------|-------------|
 | `cwd` | string | 高 — Thread 工作目录 |
 | `permissionMode` | enum | 高 — 决定 Agent 自主程度 |
+| `canUseTool` | callback | 高 — 人工介入审批 |
 | `settingSources` | array | 中 — 是否加载项目配置 |
 | `systemPrompt` | string/preset | 高 — 可注入 Thread context |
 | `maxTurns` | number | 中 — 防止无限循环 |
@@ -78,18 +100,6 @@ for await (const msg of q) {
 | `abortController` | AbortController | 高 — 取消/暂停 |
 | `tools` | array/preset | 中 — 工具限制 |
 | `mcpServers` | Record | 低 — MCP 扩展 |
-
-### 关键差异对比表
-
-| 维度 | ACP 协议 | Claude Agent SDK |
-|------|----------|-----------------|
-| 抽象层级 | 低层协议（JSON-RPC） | 高层 SDK（函数调用） |
-| 通信方式 | stdin/stdout JSON-RPC 或 HTTP | 子进程 + stream-json |
-| 消息模型 | session/new, session/prompt | query() AsyncGenerator |
-| 流式输出 | session/update notification | AsyncGenerator<SDKMessage> |
-| Resume | session/load | options.resume |
-| 维护方 | ACP 社区标准 | Anthropic 官方 |
-| 适用场景 | 编辑器 ↔ Agent | 程序 ↔ Claude Code |
 
 ## 🔗 Related
 - [原始 outline](../../2026-02-04/multi-thread-agent-orchestration/outline.md)
