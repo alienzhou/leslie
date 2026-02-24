@@ -10,7 +10,47 @@ discussions:
     notes: []
   2026-02-24/sdk-replaces-acp:
     outline:
-      mtime: 1771916700.1521196
-      change_count: 1
-    decisions: []
+      mtime: 1771917126.673469
+      change_count: 0
+    decisions:
+    - name: D29-sdk-replaces-acp.md
+      mtime: 1771917060.8653553
     notes: []
+  2026-02-04/multi-thread-agent-orchestration:
+    outline:
+      mtime: 1771917108.0022795
+      change_count: 0
+    decisions:
+    - name: D23-26-objective-thread-model.md
+      mtime: 1770146973.8431637
+    - name: D02-coordination-mode.md
+      mtime: 1770143796.1538572
+    - name: D27-28-cli-dual-capabilities.md
+      mtime: 1770146991.3111203
+    - name: D18-19-skill-design.md
+      mtime: 1770143907.3311806
+    - name: D04-07-sharing-mechanism.md
+      mtime: 1770143817.2693126
+    - name: D08-11-frozen-snapshot.md
+      mtime: 1770143837.1961894
+    - name: D20-21-skill-evolution.md
+      mtime: 1770143934.247767
+    - name: D16-17-acp-integration.md
+      mtime: 1771917089.030665
+    - name: D22-human-agent-parity.md
+      mtime: 1770145658.013464
+    - name: D12-15-cli-design.md
+      mtime: 1770146525.2787633
+    - name: D01-acp-protocol-selection.md
+      mtime: 1771917072.5732217
+    - name: D03-thread-primitives.md
+      mtime: 1770627448.125047
+    notes:
+    - name: swarm-analysis.md
+      mtime: 1770143991.6142313
+    - name: acp-research.md
+      mtime: 1770143961.481087
+    - name: thread-cli-commands.md
+      mtime: 1770146546.173643
+    - name: skill-design-draft.md
+      mtime: 1770144046.3128486

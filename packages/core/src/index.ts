@@ -1,7 +1,3 @@
-// ACP client modules deprecated (D29: SDK replaces ACP)
-// export * from './acp/acp-client.js';
-// export * from './acp/acp-types.js';
-// export * from './acp/mock-acp-client.js';
 export * from './assets/agents-guide-manager.js';
 export * from './assets/asset-manager.js';
 export * from './assets/asset-types.js';
