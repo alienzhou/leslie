@@ -18,17 +18,11 @@
 - **决策**: 采用 `@anthropic-ai/claude-agent-sdk` 替代 ACP 协议层
 - **文档**: [D29-sdk-replaces-acp](./decisions/D29-sdk-replaces-acp.md)
 
-### Q7 → 先做单轮
-- spawn 发一个 intent，Agent 自主跑完（单轮 `query(prompt: string)`）
-- 后续 inject 通过 `resume` 起新 `query()` 接续 session
-
-### Q9 → settingSources: ["project"]
-- 加载项目配置（CLAUDE.md/AGENTS.md），不加载 user 级配置
-
-### Q6 → canUseTool 策略 B：交互式审批
-- 默认前台模式，所有工具调用需用户确认
-- permissionMode: `default`（不自动批准任何操作）
-- 通过 `canUseTool` 回调展示工具请求，等用户 y/n
+### D30: SDK 使用约定（Q6 + Q7 + Q9）
+- **文档**: [D30-sdk-usage-conventions](./decisions/D30-sdk-usage-conventions.md)
+- Q7: 单轮 `query(prompt: string)` 优先，inject 用 `resume` 接续
+- Q9: `settingSources: ["project"]`，加载项目配置
+- Q6: `permissionMode: "default"` + `canUseTool` 交互审批，所有工具需用户确认
 
 ### 以下设计不变
 - Thread = Claude Code 进程（D16 核心）
@@ -77,3 +71,4 @@
 
 ### Decisions
 - [D29-sdk-replaces-acp](./decisions/D29-sdk-replaces-acp.md) — SDK 替代 ACP 协议层
+- [D30-sdk-usage-conventions](./decisions/D30-sdk-usage-conventions.md) — SDK 使用约定（单轮、project settings、交互审批）
