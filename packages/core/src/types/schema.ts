@@ -21,6 +21,7 @@ export const threadInfoSchema = z.object({
   storage_path: z.string().min(1),
   executor: z.enum(['human', 'agent', 'system']),
   updated_at: z.string().datetime(),
+  session_id: z.string().optional(),
 });
 
 export const relationInfoSchema = z.object({

@@ -40,7 +40,7 @@ function showHelp(): void {
     '  objective create --title <title>',
     '  objective list',
     '  objective status --id <objective-id>',
-    '  spawn --intent <intent> --objective <objective-id> [--parent <thread-id>]',
+    '  spawn --intent <intent> --objective <objective-id> [--parent <thread-id>] [--no-run]',
     '  reference --from <thread-id> --target <thread-id> [--binding frozen|live]',
     '  lifecycle --thread <thread-id> --action done|cancel|suspend|resume|archive',
     '  list [--status <status>]',

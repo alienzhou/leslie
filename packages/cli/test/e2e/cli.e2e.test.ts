@@ -55,6 +55,7 @@ describe('cli e2e', () => {
       'Design API',
       '--objective',
       objectiveId,
+      '--no-run',
     ]);
     expect(spawn.code).toBe(0);
     const threadId = dataValue(spawn.parsed, 'thread_id') as string;
@@ -95,8 +96,8 @@ describe('cli e2e', () => {
     runCli(workspace, ['init', '--yes']);
     const objective = runCli(workspace, ['objective', 'create', '--title', 'Obj']);
     const objectiveId = dataValue(objective.parsed, 'objectiveId') as string;
-    const a = runCli(workspace, ['spawn', '--intent', 'A', '--objective', objectiveId]);
-    const b = runCli(workspace, ['spawn', '--intent', 'B', '--objective', objectiveId]);
+    const a = runCli(workspace, ['spawn', '--intent', 'A', '--objective', objectiveId, '--no-run']);
+    const b = runCli(workspace, ['spawn', '--intent', 'B', '--objective', objectiveId, '--no-run']);
     const aId = dataValue(a.parsed, 'thread_id') as string;
     const bId = dataValue(b.parsed, 'thread_id') as string;
     runCli(workspace, ['reference', '--from', aId, '--target', bId]);

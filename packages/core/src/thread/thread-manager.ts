@@ -221,6 +221,19 @@ export class ThreadManager {
     };
   }
 
+  public async updateSessionId(threadId: string, sessionId: string): Promise<void> {
+    await this.relationsStore.mutate((data) => {
+      const thread = data.threads[threadId];
+      if (!thread) {
+        throw new LeslieError(ERROR_CODES.THREAD_NOT_FOUND, `Thread '${threadId}' not found`, {
+          threadId,
+        });
+      }
+      thread.session_id = sessionId;
+      thread.updated_at = nowIso();
+    });
+  }
+
   public async listArtifacts(
     threadId: string,
   ): Promise<{ warnings: Warning[]; assets: Awaited<ReturnType<AssetManager['listAssets']>> }> {

@@ -1,3 +1,4 @@
+export * from './acp/index.js';
 export * from './assets/agents-guide-manager.js';
 export * from './assets/asset-manager.js';
 export * from './assets/asset-types.js';

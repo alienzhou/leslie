@@ -26,6 +26,8 @@ export interface ThreadInfo {
   storage_path: string;
   executor: ThreadExecutor;
   updated_at: string;
+  /** Claude Agent SDK session ID，用于 resume */
+  session_id?: string;
 }
 
 export interface SpawnInput {

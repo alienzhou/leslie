@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { AgentRunner } from './acp/agent-runner.js';
+import type { AgentRunOptions, AgentRunResult } from './acp/types.js';
 import { AgentsGuideManager } from './assets/agents-guide-manager.js';
 import { AssetManager } from './assets/asset-manager.js';
 import { ThreadContextBuilder } from './assets/context-builder.js';
@@ -49,6 +51,8 @@ export class LeslieCore {
 
   private readonly transcriptWriter: TranscriptWriter;
 
+  private readonly agentRunner: AgentRunner;
+
   public constructor(private readonly options: LeslieCoreOptions) {
     this.paths = buildPaths(options.workspaceRoot);
     this.relationsStore = new RelationsStore({
@@ -69,6 +73,7 @@ export class LeslieCore {
     this.contextBuilder = new ThreadContextBuilder(this.relationsStore, this.assetManager);
     this.agentsGuideManager = new AgentsGuideManager();
     this.transcriptWriter = new TranscriptWriter((threadId) => this.assetManager.threadDir(threadId));
+    this.agentRunner = new AgentRunner();
   }
 
   public async initProject(): Promise<void> {
@@ -160,6 +165,38 @@ export class LeslieCore {
 
   public async writeTranscript(payload: TranscriptPayload): Promise<string> {
     return this.transcriptWriter.write(payload);
+  }
+
+  /**
+   * 启动 Agent 执行 Thread 任务。
+   * 会自动将 SDK 返回的 session_id 写入 ThreadInfo。
+   */
+  public async runAgent(
+    threadId: string,
+    runOptions: Omit<AgentRunOptions, 'prompt' | 'cwd'>,
+  ): Promise<AgentRunResult> {
+    const thread = await this.threadManager.getThread(threadId);
+
+    const result = await this.agentRunner.run({
+      prompt: thread.title,
+      cwd: this.options.workspaceRoot,
+      resumeSessionId: thread.session_id,
+      ...runOptions,
+    });
+
+    if (result.sessionId) {
+      await this.threadManager.updateSessionId(threadId, result.sessionId);
+    }
+
+    if (result.success) {
+      await this.threadManager.lifecycle(threadId, 'done', undefined, 'system');
+    }
+
+    return result;
+  }
+
+  public get workspaceRoot(): string {
+    return this.options.workspaceRoot;
   }
 
   public relationsFilePath(): string {
