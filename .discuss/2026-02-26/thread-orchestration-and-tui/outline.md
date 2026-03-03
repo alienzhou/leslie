@@ -2,12 +2,10 @@
 
 ## 🔵 Current Focus
 
-### Q8: 并发执行模型（重新审视）
-- 用户挑战"调度循环"设计：spawn 就是 create + start，为什么不直接启动？
-- 核心问题变为：spawn 启动子 Agent 是**阻塞**还是**非阻塞**？
-  - 阻塞 → 串行（父等子完成）
-  - 非阻塞 → 并发（子进程后台运行，父继续）
-- 如果非阻塞，`leslie run` 只需监控 Objective 完成状态，不需要调度循环
+### Q9: 挂起等待的唤醒机制
+- 父 Agent spawn 多个子 Thread（非阻塞）后挂起自己
+- 子 Thread 完成后，谁来唤醒父 Agent？怎么唤醒？
+- 需要一个"检测子完成 → resume 父"的机制
 
 ## ⚪ Pending
 
@@ -23,11 +21,18 @@
 ### C4: spawn = create thread + start agent（绑定） → [D03](decisions/D03-spawn-semantics.md)
 ### C5: Agent 拆分引导策略（AGENTS.md 引导，观察迭代）
 ### C6: 一体化命令 `leslie run --title "..."`
+### C7: 非阻塞 spawn
+- spawn 启动子 Agent 在后台进程运行，立即返回 thread ID
+- 父 Agent 可连续 spawn 多个，实现真并发
+- 父 Agent 完成后可选择：继续做事 / 结束 / 挂起等待子 Thread
+
+### C8: `leslie run` = 监控器 + 渲染器
+- 不是调度器，不负责启动子 Thread（spawn 自己启动）
+- 职责：创建 Objective → spawn 首个 Thread → 监控所有 Thread 状态 → 渲染输出
+- 持续运行直到 Objective 下所有 Thread 完成
 
 ## ❌ Rejected
 
-### R1: meta-agent 编排器 → [D02](decisions/D02-flat-agent-architecture.md)
-### R2: 内置 Scheduler / 拓扑模板 → [D02](decisions/D02-flat-agent-architecture.md)
-### R3: 思路 A（增强 objective create）
-### R4: 外部调度循环启动子 Thread（被挑战中）
-- 用户观点：spawn 自身就应该直接启动，不需要"别人"来启动
+### R1-R3: (同前)
+### R4: 外部调度循环启动子 Thread
+- spawn 直接启动，不需要调度器
