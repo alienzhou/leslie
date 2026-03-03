@@ -70,8 +70,8 @@ discussions:
     notes: []
   2026-02-26/thread-orchestration-and-tui:
     outline:
-      mtime: 1772528886.698979
-      change_count: 0
+      mtime: 1772531476.4755979
+      change_count: 1
     decisions:
     - name: D01-ink-terminal-ui.md
       mtime: 1772528849.569358

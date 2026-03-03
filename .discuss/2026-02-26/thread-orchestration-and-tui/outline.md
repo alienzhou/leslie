@@ -2,52 +2,38 @@
 
 ## 🔵 Current Focus
 
-### Q6: Objective → 自动 spawn 首个 Thread 的命令设计
-- `leslie objective create` 目前只创建 Objective 记录
-- 需要一个一体化命令：创建 Objective → spawn 首个 Thread → 运行 Agent
-- 待讨论：增强 `objective create` 还是新增命令（如 `leslie run`）？
+### Q6: 一体化命令 → `leslie run --title "..."` ✅ 已确认思路 B
+- 新增 `leslie run` 命令，内部串联 create objective + spawn + runAgent
 
-### Q7: 当前输出可见性问题
-- 用户反馈"中间有很多过程没有输出"
-- 需要排查 Agent 运行过程中输出渲染是否完整
+### Q8: 并发执行模型
+- 之前说"串行执行"被挑战：Agent 为什么不能 spawn 多个子 Thread？
+- 用户提出三种父 Agent 行为：
+  1. 不等待，继续执行（fire-and-forget）
+  2. 挂起，等待所有 spawn 的 agent 结束（fork-join）
+  3. 挂起，等待部分 spawn 的 agent 结束（selective wait）
+- 这涉及 spawn 的阻塞/非阻塞语义和 Agent 的挂起/恢复机制
 
 ## ⚪ Pending
 
+### Q7: 当前输出可见性问题
+
 ### Q4: ink UI 集成方案
 - 确认用 ink，基础流程跑通后再集成
-- Thread 关系是网状（spawn 构成树 + reference 构成图）
 
 ### Q5: 与 oclif 的集成方式
 
 ## ✅ Confirmed
 
 ### C1: 终端 UI 选用 ink → [D01](decisions/D01-ink-terminal-ui.md)
-- React for CLI，Flexbox 布局，支持多 panel + 实时流式输出
-- Thread 关系是网状结构（非纯树），展示时需考虑
-- 在运行流程跑通后集成
-
 ### C2: 扁平 Agent 架构（无 meta-agent） → [D02](decisions/D02-flat-agent-architecture.md)
-- 所有 Agent 完全平级，都可以 spawn / reference / transfer
-- 创建 Objective 时自动启动一个普通 Agent
-- 不引入编排 Agent / Scheduler（MVP 阶段）
-
-### C3: 实现优先级
-- 第一步：Objective → 自动 spawn + 运行 Thread（跑通基本流）
-- 第二步：ink UI 多 Thread 展示
-- 原则：先运行，后展示；先简单，后复杂
-
+### C3: 实现优先级（先运行后展示）
 ### C4: spawn = create thread + start agent（目前绑定） → [D03](decisions/D03-spawn-semantics.md)
-- `leslie spawn` 创建 Thread 的同时也启动 Agent
-- 代码层面拆分为两步（create + run），是为未来灵活性预留
-- 当前两者始终绑定执行
-- 深度优先、串行执行模型
-
-### C5: Agent 拆分引导策略
-- 通过 AGENTS.md 中的 Behavior Guidelines 引导 Agent 主动拆分
-- 先观察效果，不够再加强措辞或增加机制
+### C5: Agent 拆分引导策略（AGENTS.md 引导，观察迭代）
+### C6: 一体化命令选用思路 B — `leslie run --title "..."`
 
 ## ❌ Rejected
 
-### R1: meta-agent 编排器（MVP 阶段） → [D02](decisions/D02-flat-agent-architecture.md)
+### R1: meta-agent 编排器 → [D02](decisions/D02-flat-agent-architecture.md)
 ### R2: 内置 Scheduler / 拓扑模板 → [D02](decisions/D02-flat-agent-architecture.md)
-### R3: spawn 时仅创建不启动 → [D03](decisions/D03-spawn-semantics.md)
+### R3: 思路 A（增强 objective create）
+- Reason: `run` 语义更直觉，`objective create` 保持纯粹
