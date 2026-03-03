@@ -70,7 +70,13 @@ discussions:
     notes: []
   2026-02-26/thread-orchestration-and-tui:
     outline:
-      mtime: 1772528783.7271948
-      change_count: 3
-    decisions: []
+      mtime: 1772528886.698979
+      change_count: 0
+    decisions:
+    - name: D01-ink-terminal-ui.md
+      mtime: 1772528849.569358
+    - name: D02-flat-agent-architecture.md
+      mtime: 1772528860.852339
+    - name: D03-spawn-semantics.md
+      mtime: 1772528866.3420868
     notes: []
