@@ -192,7 +192,10 @@ export class LeslieCore {
     }
 
     if (result.success) {
-      await this.threadManager.lifecycle(threadId, 'done', undefined, 'system');
+      const currentThread = await this.threadManager.getThread(threadId);
+      if (currentThread.status === 'active') {
+        await this.threadManager.lifecycle(threadId, 'done', undefined, 'system');
+      }
     }
 
     return result;

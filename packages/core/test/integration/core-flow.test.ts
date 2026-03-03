@@ -78,4 +78,40 @@ describe('core integration flow', () => {
       }),
     ).rejects.toBeInstanceOf(LeslieError);
   });
+
+  it('does not auto-complete suspended thread after successful agent run', async () => {
+    const { core } = await createCore();
+    const objective = await core.createObjective('Build API');
+    const spawned = await core.spawnThread({
+      intent: 'Parent task',
+      objective: objective.objectiveId,
+      inherit: 'none',
+    });
+    const threadId = spawned.result.thread_id;
+
+    const runnerMock = vi.fn(async () => {
+      await core.lifecycle(threadId, 'suspend', 'Waiting children');
+      return {
+        sessionId: 'session-test',
+        success: true,
+        result: 'ok',
+        errors: undefined,
+        durationMs: 10,
+        costUsd: 0,
+        numTurns: 1,
+      };
+    });
+
+    (
+      core as unknown as {
+        agentRunner: { run: typeof runnerMock };
+      }
+    ).agentRunner.run = runnerMock;
+
+    await core.runAgent(threadId, {});
+
+    const thread = await core.getThread(threadId);
+    expect(thread.status).toBe('suspended');
+    expect(thread.session_id).toBe('session-test');
+  });
 });
