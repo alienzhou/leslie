@@ -56,3 +56,21 @@ discussions:
       mtime: 1770146546.173643
     - name: skill-design-draft.md
       mtime: 1770144046.3128486
+  2026-02-26/agent-shaping-architecture:
+    outline:
+      mtime: 1772449364.2024152
+      change_count: 0
+    decisions:
+    - name: D02-module-organization.md
+      mtime: 1772449364.2023892
+    - name: D01-agent-shaping-dual-layer.md
+      mtime: 1772449364.2023716
+    - name: D03-operation-catalog-in-guide.md
+      mtime: 1772449364.202335
+    notes: []
+  2026-02-26/thread-orchestration-and-tui:
+    outline:
+      mtime: 1772522948.5205429
+      change_count: 2
+    decisions: []
+    notes: []

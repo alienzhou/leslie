@@ -177,8 +177,11 @@ export class LeslieCore {
   ): Promise<AgentRunResult> {
     const thread = await this.threadManager.getThread(threadId);
 
+    const { xml: threadContext } = await this.contextBuilder.build(threadId);
+    const prompt = threadContext ? `${threadContext}\n\n${thread.title}` : thread.title;
+
     const result = await this.agentRunner.run({
-      prompt: thread.title,
+      prompt,
       cwd: this.options.workspaceRoot,
       resumeSessionId: thread.session_id,
       ...runOptions,
