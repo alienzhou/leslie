@@ -70,13 +70,17 @@ discussions:
     notes: []
   2026-02-26/thread-orchestration-and-tui:
     outline:
-      mtime: 1772544471.9641645
-      change_count: 3
+      mtime: 1772544701.190839
+      change_count: 1
     decisions:
     - name: D01-ink-terminal-ui.md
       mtime: 1772528849.569358
+    - name: D05-leslie-run-command.md
+      mtime: 1772544535.5585783
     - name: D02-flat-agent-architecture.md
       mtime: 1772528860.852339
+    - name: D04-non-blocking-spawn-and-resume.md
+      mtime: 1772544526.1110952
     - name: D03-spawn-semantics.md
       mtime: 1772528866.3420868
     notes: []
