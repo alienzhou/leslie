@@ -18,6 +18,8 @@ import { runTranscript } from './commands/transcript.js';
 import { runObjectiveCreate } from './commands/objective/create.js';
 import { runObjectiveList } from './commands/objective/list.js';
 import { runObjectiveStatus } from './commands/objective/status.js';
+import { runRun } from './commands/run.js';
+import { runWorker } from './commands/worker.js';
 
 function printOutput(value: unknown, format: 'json' | 'table' | 'yaml'): void {
   if (format === 'table') {
@@ -40,7 +42,8 @@ function showHelp(): void {
     '  objective create --title <title>',
     '  objective list',
     '  objective status --id <objective-id>',
-    '  spawn --intent <intent> --objective <objective-id> [--parent <thread-id>] [--no-run]',
+    '  run --title <title>',
+    '  spawn --intent <intent> --objective <objective-id> [--parent <thread-id>] [--no-run] [--foreground]',
     '  reference --from <thread-id> --target <thread-id> [--binding frozen|live]',
     '  lifecycle --thread <thread-id> --action done|cancel|suspend|resume|archive',
     '  list [--status <status>]',
@@ -87,6 +90,8 @@ export async function runCli(argv: string[]): Promise<void> {
       response = await runInit(core, flags);
     } else if (command === 'spawn') {
       response = await runSpawn(core, flags);
+    } else if (command === 'run') {
+      response = await runRun(core, flags);
     } else if (command === 'reference') {
       response = await runReference(core, flags);
     } else if (command === 'lifecycle') {
@@ -111,11 +116,15 @@ export async function runCli(argv: string[]): Promise<void> {
       response = await runObjectiveList(core);
     } else if (command === 'objective' && subcommand === 'status') {
       response = await runObjectiveStatus(core, flags);
+    } else if (command === '_worker') {
+      response = await runWorker(core, flags);
     } else {
       throw new Error(`Unknown command: ${command}${subcommand ? ` ${subcommand}` : ''}`);
     }
 
-    printOutput(response, format);
+    if (command !== '_worker') {
+      printOutput(response, format);
+    }
   } catch (error) {
     const payload = toCliError(error);
     printOutput(payload, format);

@@ -2,6 +2,7 @@ import type { LeslieCore } from '@vibe-x-ai/leslie-core';
 import { createInteractivePermissionHandler } from '../agent/permission-prompt.js';
 import { createOutputRenderer } from '../agent/output-renderer.js';
 import { splitComma, requiredString } from '../utils.js';
+import { LESLIE_RUNTIME_DIR_ENV, startThreadWorker } from '../runtime/agent-runtime.js';
 
 export async function runSpawn(core: LeslieCore, flags: Record<string, unknown>) {
   const intent = requiredString(flags.intent, 'intent');
@@ -35,8 +36,35 @@ export async function runSpawn(core: LeslieCore, flags: Record<string, unknown>)
     };
   }
 
-  // 前台交互模式：启动 Agent 并实时展示输出
-  process.stderr.write(`\nStarting agent for thread ${threadId}...\n\n`);
+  // 默认后台非阻塞。可用 --foreground 强制前台模式。
+  const forceForeground = flags.foreground === true;
+  if (!forceForeground) {
+    const runtimeDir = process.env[LESLIE_RUNTIME_DIR_ENV];
+    if (typeof runtimeDir === 'string' && runtimeDir.length > 0) {
+      await startThreadWorker({
+        threadId,
+        runtimeDir,
+        source: 'spawn',
+      });
+    } else {
+      await startThreadWorker({
+        threadId,
+        source: 'spawn',
+      });
+    }
+    process.stderr.write(`\nThread ${threadId} started in background.\n`);
+    return {
+      success: true,
+      data: {
+        ...output.result,
+        run_mode: 'background',
+      },
+      warnings: output.warnings,
+    };
+  }
+
+  // 前台模式：启动 Agent 并实时展示输出
+  process.stderr.write(`\nStarting agent for thread ${threadId} (foreground)...\n\n`);
 
   const agentResult = await core.runAgent(threadId, {
     canUseTool: createInteractivePermissionHandler(),
