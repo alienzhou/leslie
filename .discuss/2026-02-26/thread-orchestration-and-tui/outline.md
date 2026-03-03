@@ -20,15 +20,16 @@
 ### C3: 实现优先级（先运行后展示）
 ### C4: spawn = create thread + start agent（绑定） → [D03](decisions/D03-spawn-semantics.md)
 ### C5: Agent 拆分引导策略（AGENTS.md 引导，观察迭代）
-### C6: 一体化命令 `leslie run --title "..."`
-### C7: 非阻塞 spawn
+### C6: 一体化命令 `leslie run --title "..."` → [D05](decisions/D05-leslie-run-command.md)
+### C7: 非阻塞 spawn + 事件驱动唤醒 → [D04](decisions/D04-non-blocking-spawn-and-resume.md)
 - spawn 启动子 Agent 在后台进程运行，立即返回 thread ID
 - 父 Agent 可连续 spawn 多个，实现真并发
 - 父 Agent 完成后可选择：继续做事 / 结束 / 挂起等待子 Thread
+- 唤醒机制：`leslie run` 检测子完成 → resume 父 Agent（via session_id）
 
-### C8: `leslie run` = 监控器 + 渲染器
+### C8: `leslie run` = 监控器 + 渲染器 → [D05](decisions/D05-leslie-run-command.md)
 - 不是调度器，不负责启动子 Thread（spawn 自己启动）
-- 职责：创建 Objective → spawn 首个 Thread → 监控所有 Thread 状态 → 渲染输出
+- 职责：创建 Objective → spawn 首个 Thread → 监控所有 Thread 状态 → 渲染输出 → 事件驱动唤醒
 - 持续运行直到 Objective 下所有 Thread 完成
 
 ## ❌ Rejected
