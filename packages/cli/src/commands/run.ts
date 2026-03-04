@@ -6,6 +6,7 @@ import { stdin, stderr } from 'node:process';
 import type { LeslieCore } from '@vibe-x-ai/leslie-core';
 import { requiredString } from '../utils.js';
 import { buildRuntimeDir, ensureRuntimeDirs, getRuntimePaths, LESLIE_RUNTIME_DIR_ENV, startThreadWorker } from '../runtime/agent-runtime.js';
+import { createRunTui, type RunTui } from '../runtime/run-tui.js';
 
 const TERMINATED_STATUS = new Set(['completed', 'cancelled', 'archived']);
 
@@ -33,6 +34,7 @@ function truncate(text: string, max = 160): string {
 
 export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
   const title = requiredString(flags.title, 'title');
+  const enableTui = flags.tui !== false && process.stdout.isTTY;
 
   const objective = await core.createObjective(title);
   const runtimeDir = buildRuntimeDir(core.workspaceRoot, objective.objectiveId);
@@ -55,6 +57,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
   stderr.write(`[run] root thread ${rootThreadId} started in background\n`);
 
   const runtimePaths = getRuntimePaths(runtimeDir);
+  const ui: RunTui | null = enableTui ? createRunTui(title, objective.objectiveId) : null;
   const handledApprovalRequests = new Set<string>();
   const activeWorkers = new Set<string>([rootThreadId]);
   let eventsOffset = 0;
@@ -104,8 +107,16 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
       if (eventType === 'thread_started') {
         activeWorkers.add(threadId);
         stderr.write(`[thread:${threadId}] started\n`);
+        ui?.updateThread({
+          id: threadId,
+          status: 'active',
+        });
       } else if (eventType === 'assistant_text') {
         stderr.write(`[thread:${threadId}] ${truncate(String(event.text ?? ''))}\n`);
+        ui?.updateThread({
+          id: threadId,
+          appendLine: String(event.text ?? ''),
+        });
       } else if (eventType === 'worker_exit') {
         activeWorkers.delete(threadId);
         const success = Boolean(event.success);
@@ -116,8 +127,17 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
             await core.lifecycle(threadId, 'cancel', 'Worker exited with error');
           }
         }
+        const thread = await core.getThread(threadId);
+        ui?.updateThread({
+          id: threadId,
+          status: thread.status,
+        });
       } else if (eventType === 'tool_request') {
         stderr.write(`[thread:${threadId}] tool request ${String(event.toolName ?? '')}\n`);
+        ui?.updateThread({
+          id: threadId,
+          appendLine: `tool request: ${String(event.toolName ?? '')}`,
+        });
       }
     }
   };
@@ -153,7 +173,14 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         const inputPreview = truncate(JSON.stringify(payload.input ?? {}), 200);
         stderr.write(`\n[approval] thread=${threadId} tool=${toolName}\n`);
         stderr.write(`[approval] input=${inputPreview}\n`);
-        const allow = await askApproval('Allow? (y/n) ');
+        const allow = ui
+          ? await ui.requestApproval({
+              id: fileName.replace('.json', ''),
+              threadId,
+              toolName,
+              inputPreview,
+            })
+          : await askApproval('Allow? (y/n) ');
         const response = allow
           ? { behavior: 'allow', updatedInput: payload.input ?? {} }
           : { behavior: 'deny', message: `Denied by user for ${toolName}` };
@@ -175,6 +202,13 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         pendingCheck = false;
 
         const threads = (await core.listThreads()).filter((thread) => thread.objective === objective.objectiveId);
+        ui?.setThreadsSnapshot(
+          threads.map((thread) => ({
+            id: thread.id,
+            status: thread.status,
+            parentId: thread.parent_id,
+          })),
+        );
         const suspended = threads.filter((thread) => thread.status === 'suspended');
 
         for (const thread of suspended) {
@@ -199,6 +233,11 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
           });
           activeWorkers.add(thread.id);
           stderr.write(`[resume] thread ${thread.id} resumed\n`);
+          ui?.updateThread({
+            id: thread.id,
+            status: 'active',
+            appendLine: 'resumed',
+          });
         }
 
         const refreshedObjective = await core.getObjective(objective.objectiveId);
@@ -238,6 +277,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
     resolveDone = resolve;
   });
 
+  ui?.close();
   stderr.write(`[run] objective ${objective.objectiveId} completed\n`);
   return {
     success: true,
