@@ -202,11 +202,36 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         pendingCheck = false;
 
         const threads = (await core.listThreads()).filter((thread) => thread.objective === objective.objectiveId);
+        let relationsSnapshot: Record<
+          string,
+          { children: string[]; references_to: string[]; referenced_by: string[] }
+        > = {};
+        try {
+          const relationFilePath = path.join(core.workspaceRoot, core.relationsFilePath());
+          const parsed = JSON.parse(await fs.readFile(relationFilePath, 'utf-8')) as {
+            relations?: Record<string, { children?: string[]; references_to?: string[]; referenced_by?: string[] }>;
+          };
+          relationsSnapshot = Object.fromEntries(
+            Object.entries(parsed.relations ?? {}).map(([key, value]) => [
+              key,
+              {
+                children: value.children ?? [],
+                references_to: value.references_to ?? [],
+                referenced_by: value.referenced_by ?? [],
+              },
+            ]),
+          );
+        } catch {
+          relationsSnapshot = {};
+        }
         ui?.setThreadsSnapshot(
           threads.map((thread) => ({
             id: thread.id,
             status: thread.status,
             parentId: thread.parent_id,
+            children: relationsSnapshot[thread.id]?.children ?? [],
+            referencesTo: relationsSnapshot[thread.id]?.references_to ?? [],
+            referencedBy: relationsSnapshot[thread.id]?.referenced_by ?? [],
           })),
         );
         const suspended = threads.filter((thread) => thread.status === 'suspended');

@@ -5,6 +5,9 @@ interface ThreadView {
   id: string;
   status: string;
   parentId: string | null;
+  children: string[];
+  referencesTo: string[];
+  referencedBy: string[];
   lastLine: string;
   lines: string[];
 }
@@ -63,6 +66,9 @@ class TuiStore {
       id: input.id,
       status: 'active',
       parentId: null,
+      children: [],
+      referencesTo: [],
+      referencedBy: [],
       lastLine: '',
       lines: [],
     };
@@ -89,7 +95,14 @@ class TuiStore {
   }
 
   public setThreadsSnapshot(
-    threads: Array<{ id: string; status: string; parentId: string | null }>,
+    threads: Array<{
+      id: string;
+      status: string;
+      parentId: string | null;
+      children?: string[];
+      referencesTo?: string[];
+      referencedBy?: string[];
+    }>,
   ): void {
     let changed = false;
     const nextThreads = { ...this.state.threads };
@@ -100,14 +113,33 @@ class TuiStore {
           id: thread.id,
           status: thread.status,
           parentId: thread.parentId,
+          children: thread.children ?? [],
+          referencesTo: thread.referencesTo ?? [],
+          referencedBy: thread.referencedBy ?? [],
           lastLine: '',
           lines: [],
         };
         changed = true;
         continue;
       }
-      if (existing.status !== thread.status || existing.parentId !== thread.parentId) {
-        nextThreads[thread.id] = { ...existing, status: thread.status, parentId: thread.parentId };
+      const nextChildren = thread.children ?? existing.children;
+      const nextReferencesTo = thread.referencesTo ?? existing.referencesTo;
+      const nextReferencedBy = thread.referencedBy ?? existing.referencedBy;
+      if (
+        existing.status !== thread.status ||
+        existing.parentId !== thread.parentId ||
+        existing.children.join(',') !== nextChildren.join(',') ||
+        existing.referencesTo.join(',') !== nextReferencesTo.join(',') ||
+        existing.referencedBy.join(',') !== nextReferencedBy.join(',')
+      ) {
+        nextThreads[thread.id] = {
+          ...existing,
+          status: thread.status,
+          parentId: thread.parentId,
+          children: nextChildren,
+          referencesTo: nextReferencesTo,
+          referencedBy: nextReferencedBy,
+        };
         changed = true;
       }
     }
@@ -210,16 +242,24 @@ function TuiApp({ store }: { store: TuiStore }) {
           {threadRows.map((thread) => {
             const selectedMark = thread.id === state.selectedThreadId ? '>' : ' ';
             const relation = thread.parentId ? ` <- ${thread.parentId}` : '';
+            const counts = ` c:${thread.children.length} r:${thread.referencesTo.length}`;
             return (
               <Text key={thread.id}>
                 {selectedMark} [{thread.status}] {thread.id}
                 {relation}
+                {counts}
               </Text>
             );
           })}
         </Box>
         <Box flexDirection="column" flexGrow={1}>
           <Text>Logs ({selected?.id ?? 'none'})</Text>
+          {selected ? (
+            <Text>
+              rel: children={selected.children.join(',') || '-'} | refs_to={selected.referencesTo.join(',') || '-'} | referenced_by=
+              {selected.referencedBy.join(',') || '-'}
+            </Text>
+          ) : null}
           {(selected?.lines ?? []).slice(-18).map((line, index) => (
             <Text key={`${selected?.id ?? 'none'}-${index}`}>{line}</Text>
           ))}
@@ -242,7 +282,16 @@ function TuiApp({ store }: { store: TuiStore }) {
 
 export interface RunTui {
   updateThread: (input: { id: string; status?: string; parentId?: string | null; appendLine?: string }) => void;
-  setThreadsSnapshot: (threads: Array<{ id: string; status: string; parentId: string | null }>) => void;
+  setThreadsSnapshot: (
+    threads: Array<{
+      id: string;
+      status: string;
+      parentId: string | null;
+      children?: string[];
+      referencesTo?: string[];
+      referencedBy?: string[];
+    }>,
+  ) => void;
   requestApproval: (input: {
     id: string;
     threadId: string;
