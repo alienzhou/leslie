@@ -1,0 +1,63 @@
+# Leslie 运行环境配置
+
+运行 `leslie spawn` 时，SDK 启动的 Claude Code 子进程需要认证。有两种方式：
+
+1. **登录 ClaudeCode**：在 IDE（如 Cursor）中执行 `/login` 完成认证
+2. **配置环境变量**：使用自定义 API 端点（如 kwaipilot）时，通过环境变量配置
+
+## 环境变量方式
+
+当使用自定义后端（如 kwaipilot）时，在运行 `leslie` 前设置以下环境变量：
+
+### Bash / Zsh（单次会话）
+
+```bash
+export ANTHROPIC_AUTH_TOKEN="Test"
+export ANTHROPIC_BASE_URL="http://localhost:3000"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="kwaipilot-default"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="kwaipilot-default"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="kwaipilot-default"
+export ANTHROPIC_MODEL="kwaipilot-default"
+```
+
+### 一行命令（便于复制）
+
+```bash
+export ANTHROPIC_AUTH_TOKEN="Test" ANTHROPIC_BASE_URL="http://localhost:3000" ANTHROPIC_DEFAULT_HAIKU_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_OPUS_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_SONNET_MODEL="kwaipilot-default" ANTHROPIC_MODEL="kwaipilot-default"
+```
+
+### 前置执行（推荐）
+
+在运行 `leslie` 前先执行上述 `export`，再执行目标命令：
+
+```bash
+export ANTHROPIC_AUTH_TOKEN="Test" ANTHROPIC_BASE_URL="http://localhost:3000" ANTHROPIC_DEFAULT_HAIKU_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_OPUS_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_SONNET_MODEL="kwaipilot-default" ANTHROPIC_MODEL="kwaipilot-default"
+leslie spawn --intent "Your task" --objective <objective-id>
+```
+
+### 持久化到 Shell 配置
+
+将 `export` 写入 `~/.zshrc` 或 `~/.bashrc`，每次打开终端自动生效：
+
+```bash
+# Append to ~/.zshrc
+cat >> ~/.zshrc << 'EOF'
+
+# Leslie / kwaipilot env
+export ANTHROPIC_AUTH_TOKEN="Test"
+export ANTHROPIC_BASE_URL="http://localhost:3000"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="kwaipilot-default"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="kwaipilot-default"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="kwaipilot-default"
+export ANTHROPIC_MODEL="kwaipilot-default"
+EOF
+```
+
+### 变量说明
+
+| 变量 | 说明 |
+|------|------|
+| `ANTHROPIC_AUTH_TOKEN` | API 认证 token |
+| `ANTHROPIC_BASE_URL` | API 基础 URL（如 kwaipilot 本地服务） |
+| `ANTHROPIC_MODEL` | 默认模型 |
+| `ANTHROPIC_DEFAULT_*_MODEL` | 各系列默认模型（Haiku/Opus/Sonnet） |

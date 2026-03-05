@@ -164,7 +164,9 @@ pnpm build
 
 ## Troubleshooting
 
-- **`Claude Code process exited with code 1` + "Not logged in · Please run /login"**: The SDK-spawned Claude Code subprocess requires the environment to be logged in (e.g. Cursor/Claude auth). Log in via the IDE (e.g. run `/login` in Cursor) or configure the auth method required by the SDK before running `leslie spawn`.
+- **`Claude Code process exited with code 1` + "Not logged in · Please run /login"**: The SDK-spawned Claude Code subprocess requires the environment to be logged in (e.g. Cursor/Claude auth). Two options:
+  1. **Login**: Run `/login` in the IDE (e.g. Cursor)
+  2. **Env vars**: Use custom API (e.g. kwaipilot) — see [docs/setup-env.md](docs/setup-env.md) for export commands
 
 ## External References
 
