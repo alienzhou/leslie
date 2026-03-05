@@ -35,6 +35,7 @@ function truncate(text: string, max = 160): string {
 export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
   const title = requiredString(flags.title, 'title');
   const enableTui = flags.tui !== false && process.stdout.isTTY;
+  const shouldPrintEventLogs = !enableTui;
 
   const objective = await core.createObjective(title);
   const runtimeDir = buildRuntimeDir(core.workspaceRoot, objective.objectiveId);
@@ -107,13 +108,17 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
       }
       if (eventType === 'thread_started') {
         activeWorkers.add(threadId);
-        stderr.write(`[thread:${threadId}] started\n`);
+        if (shouldPrintEventLogs) {
+          stderr.write(`[thread:${threadId}] started\n`);
+        }
         ui?.updateThread({
           id: threadId,
           status: 'active',
         });
       } else if (eventType === 'assistant_text') {
-        stderr.write(`[thread:${threadId}] ${truncate(String(event.text ?? ''))}\n`);
+        if (shouldPrintEventLogs) {
+          stderr.write(`[thread:${threadId}] ${truncate(String(event.text ?? ''))}\n`);
+        }
         ui?.updateThread({
           id: threadId,
           appendLine: String(event.text ?? ''),
@@ -121,7 +126,9 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
       } else if (eventType === 'worker_exit') {
         activeWorkers.delete(threadId);
         const success = Boolean(event.success);
-        stderr.write(`[thread:${threadId}] exited (${success ? 'success' : 'error'})\n`);
+        if (shouldPrintEventLogs) {
+          stderr.write(`[thread:${threadId}] exited (${success ? 'success' : 'error'})\n`);
+        }
         if (!success) {
           const thread = await core.getThread(threadId);
           if (!isTerminated(thread.status)) {
@@ -134,7 +141,9 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
           status: thread.status,
         });
       } else if (eventType === 'tool_request') {
-        stderr.write(`[thread:${threadId}] tool request ${String(event.toolName ?? '')}\n`);
+        if (shouldPrintEventLogs) {
+          stderr.write(`[thread:${threadId}] tool request ${String(event.toolName ?? '')}\n`);
+        }
         ui?.updateThread({
           id: threadId,
           appendLine: `tool request: ${String(event.toolName ?? '')}`,
@@ -172,8 +181,10 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         const threadId = String(payload.thread_id ?? '');
         const toolName = String(payload.tool_name ?? '');
         const inputPreview = truncate(JSON.stringify(payload.input ?? {}), 200);
-        stderr.write(`\n[approval] thread=${threadId} tool=${toolName}\n`);
-        stderr.write(`[approval] input=${inputPreview}\n`);
+        if (!ui) {
+          stderr.write(`\n[approval] thread=${threadId} tool=${toolName}\n`);
+          stderr.write(`[approval] input=${inputPreview}\n`);
+        }
         const allow = ui
           ? await ui.requestApproval({
               id: fileName.replace('.json', ''),
@@ -258,7 +269,9 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
             source: 'resume',
           });
           activeWorkers.add(thread.id);
-          stderr.write(`[resume] thread ${thread.id} resumed\n`);
+          if (shouldPrintEventLogs) {
+            stderr.write(`[resume] thread ${thread.id} resumed\n`);
+          }
           ui?.updateThread({
             id: thread.id,
             status: 'active',
