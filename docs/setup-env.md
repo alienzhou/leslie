@@ -66,11 +66,13 @@ EOF
 
 Leslie 默认会读取项目根目录的 `leslie.permissions.json`，用于控制 Claude Code 的工具授权策略。
 
-- 默认策略：`default = allow`（默认放行）
-- 可配置项：
+- **非 Bash 工具**（Read、Write、Edit 等）：一律放行，不进入确认流
+- **Bash 命令**：仅 Bash 走 deny/confirm 规则
   - `bash.deny`：命中即拒绝
   - `bash.confirm`：命中才弹出确认
-- 本地覆盖：可在 `.leslie/permissions.json` 追加项目私有规则（不会进入 Git）
+  - `default`：未命中上述规则时的行为（allow | confirm | deny）
+- **配置解析失败**：会在运行时输出 `[leslie] Warning: ...` 到 stderr
+- **本地覆盖**：可在 `.leslie/permissions.json` 追加项目私有规则（不会进入 Git）
 
 示例（默认已内置在仓库）：
 

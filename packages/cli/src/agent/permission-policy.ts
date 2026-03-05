@@ -3,7 +3,9 @@ import path from 'node:path';
 
 export type PolicyAction = 'allow' | 'confirm' | 'deny';
 
+/** 外置配置：default 仅作用于 Bash 未命中 deny/confirm 的命令；非 Bash 工具一律放行 */
 interface RawPermissionConfig {
+  /** 仅对 Bash 未命中规则时生效，可选 allow | confirm | deny */
   default?: PolicyAction;
   bash?: {
     deny?: string[];
@@ -40,8 +42,10 @@ function compilePatterns(patterns: string[]): RegExp[] {
   for (const pattern of patterns) {
     try {
       compiled.push(new RegExp(pattern));
-    } catch {
-      // Ignore invalid regex patterns from user config
+    } catch (err) {
+      process.stderr.write(
+        `[leslie] Warning: Invalid regex in permission config: ${pattern} - ${err instanceof Error ? err.message : String(err)}\n`,
+      );
     }
   }
   return compiled;
@@ -52,7 +56,10 @@ function readConfigFile(filePath: string): RawPermissionConfig | null {
     const content = fs.readFileSync(filePath, 'utf-8');
     const parsed = JSON.parse(content) as RawPermissionConfig;
     return parsed;
-  } catch {
+  } catch (err) {
+    process.stderr.write(
+      `[leslie] Warning: Failed to load permission config from ${filePath}: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
     return null;
   }
 }
@@ -101,8 +108,9 @@ export function decideToolPermission(
   toolName: string,
   input: Record<string, unknown>,
 ): { action: PolicyAction; reason?: string } {
+  // 仅 Bash 走 deny/confirm 规则；Read/Write/Edit 等一律放行
   if (toolName !== 'Bash') {
-    return { action: policy.defaultAction };
+    return { action: 'allow' };
   }
 
   const command = typeof input.command === 'string' ? input.command : '';
