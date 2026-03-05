@@ -1,9 +1,9 @@
 ---
 name: agent-better-checkpoint
-description: "Automatically creates semantic Git checkpoint commits during AI coding sessions. Replaces opaque platform checkpoints with transparent, queryable Git commits using Conventional Commits format with Git Trailers. You MUST follow this skill whenever you make code changes — commit after each meaningful edit."
+description: "Creates semantic Git checkpoint commits during AI coding sessions with Conventional Commits format and Git Trailers. Use after completing code edits, or when user says 'commit changes', 'create checkpoint', or 'save my progress'."
 license: MIT
 metadata:
-  version: "0.1.0"
+  version: "0.3.3"
   author: "alienzhou"
   category: "version-control"
 ---
@@ -18,18 +18,23 @@ You are an AI coding assistant with **checkpoint awareness**. Every meaningful e
 
 ## 🔧 Installation Check
 
-Before your first commit, verify the checkpoint scripts are installed:
+Before your first commit, verify the checkpoint scripts are available.
 
-**macOS/Linux:** Check if `~/.agent-better-checkpoint/scripts/checkpoint.sh` exists.
-**Windows:** Check if `$env:USERPROFILE/.agent-better-checkpoint/scripts/checkpoint.ps1` exists.
+**IMPORTANT: Use your file-listing/read tools (NOT shell `test -f`) to check existence.** Shell relative paths break when CWD ≠ workspace root.
 
-If the scripts are **not** installed, run:
+Check in order (stop at first hit):
+1. **Project-local (preferred):** `.vibe-x/agent-better-checkpoint/checkpoint.sh` (or `.ps1`) relative to workspace root.
+2. **Global fallback:** `~/.vibe-x/agent-better-checkpoint/scripts/checkpoint.sh` (or `.ps1`).
+
+Both `.sh` and `.ps1` are always installed regardless of current OS.
+
+If neither exists, run:
 
 ```bash
-npx @vibe-x/agent-better-checkpoint@0.1.0
+npx @vibe-x/agent-better-checkpoint@0.3.3
 ```
 
-This will install the checkpoint scripts and stop hook for your platform.
+Without `--target`: installs globally. With `--target .`: project-only (skill + hooks in `.cursor/`, scripts in `.vibe-x/`), no global changes.
 
 ---
 
@@ -94,19 +99,14 @@ Switch to flex-column layout with collapsible sidebar.
 
 ## 🛠️ How to Commit
 
-Call the checkpoint script after composing your message. Determine the OS and use the appropriate command:
+Call the checkpoint script after composing your message. Both `.sh` and `.ps1` are always available — pick the one matching the current OS.
 
-**macOS/Linux:**
+**Prefer project-local when present**, fall back to global:
 
-```bash
-~/.agent-better-checkpoint/scripts/checkpoint.sh "<commit-message>" "<user-prompt>"
-```
-
-**Windows (PowerShell):**
-
-```powershell
-powershell -File "$env:USERPROFILE/.agent-better-checkpoint/scripts/checkpoint.ps1" "<commit-message>" "<user-prompt>"
-```
+| OS | Project-local | Global fallback |
+|----|--------------|-----------------|
+| macOS/Linux | `.vibe-x/agent-better-checkpoint/checkpoint.sh` | `~/.vibe-x/agent-better-checkpoint/scripts/checkpoint.sh` |
+| Windows | `powershell -File ".vibe-x\agent-better-checkpoint\checkpoint.ps1"` | `powershell -File "$env:USERPROFILE\.vibe-x\agent-better-checkpoint\scripts\checkpoint.ps1"` |
 
 ### Parameters:
 
@@ -119,7 +119,7 @@ powershell -File "$env:USERPROFILE/.agent-better-checkpoint/scripts/checkpoint.p
 ### Example (macOS/Linux):
 
 ```bash
-~/.agent-better-checkpoint/scripts/checkpoint.sh \
+.vibe-x/agent-better-checkpoint/checkpoint.sh \
   "checkpoint(auth): add JWT token refresh logic
 
 Implement automatic token refresh when access token expires.
@@ -130,7 +130,7 @@ Uses refresh token rotation for security." \
 ### Example (Windows):
 
 ```powershell
-powershell -File "$env:USERPROFILE/.agent-better-checkpoint/scripts/checkpoint.ps1" `
+powershell -File ".vibe-x\agent-better-checkpoint\checkpoint.ps1" `
   "checkpoint(auth): add JWT token refresh logic`n`nImplement automatic token refresh when access token expires.`nUses refresh token rotation for security." `
   "帮我实现 token 刷新机制"
 ```
@@ -167,4 +167,4 @@ This should feel natural — commit as you go, like any good developer.
 
 ---
 
-**Version**: 0.1.0
+**Version**: 0.3.3
