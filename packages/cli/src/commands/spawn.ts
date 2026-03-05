@@ -67,7 +67,7 @@ export async function runSpawn(core: LeslieCore, flags: Record<string, unknown>)
   process.stderr.write(`\nStarting agent for thread ${threadId} (foreground)...\n\n`);
 
   const agentResult = await core.runAgent(threadId, {
-    canUseTool: createInteractivePermissionHandler(),
+    canUseTool: createInteractivePermissionHandler(core.workspaceRoot),
     onMessage: createOutputRenderer(),
   });
 

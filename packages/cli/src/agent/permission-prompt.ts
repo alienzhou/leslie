@@ -1,5 +1,6 @@
 import readline from 'node:readline';
 import type { CanUseToolFn, PermissionResult } from '@vibe-x-ai/leslie-core';
+import { decideToolPermission, loadPermissionPolicy } from './permission-policy.js';
 
 const TOOL_LABELS: Record<string, string> = {
   Bash: 'Execute command',
@@ -40,10 +41,19 @@ function askUser(question: string): Promise<string> {
 
 /**
  * 创建交互式权限审批回调。
- * 在终端提示用户 y/n 确认工具调用。
+ * 默认按策略自动放行/拒绝，仅在 confirm 规则命中时提示用户 y/n。
  */
-export function createInteractivePermissionHandler(): CanUseToolFn {
+export function createInteractivePermissionHandler(workspaceRoot: string): CanUseToolFn {
+  const policy = loadPermissionPolicy(workspaceRoot);
   return async (toolName: string, input: Record<string, unknown>): Promise<PermissionResult> => {
+    const decision = decideToolPermission(policy, toolName, input);
+    if (decision.action === 'allow') {
+      return { behavior: 'allow', updatedInput: input };
+    }
+    if (decision.action === 'deny') {
+      return { behavior: 'deny', message: decision.reason ?? `Denied by policy for ${toolName}` };
+    }
+
     const summary = formatToolSummary(toolName, input);
     process.stderr.write(`\n\x1b[33m[tool]\x1b[0m ${summary}\n`);
 

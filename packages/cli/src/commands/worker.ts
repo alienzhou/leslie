@@ -3,6 +3,7 @@ import { watch } from 'node:fs';
 import path from 'node:path';
 import type { LeslieCore, CanUseToolFn, PermissionResult, AgentMessage } from '@vibe-x-ai/leslie-core';
 import { createInteractivePermissionHandler } from '../agent/permission-prompt.js';
+import { decideToolPermission, loadPermissionPolicy } from '../agent/permission-policy.js';
 import { createOutputRenderer } from '../agent/output-renderer.js';
 import { requiredString } from '../utils.js';
 import {
@@ -60,8 +61,23 @@ async function waitForApprovalResponse(
   });
 }
 
-function createRuntimePermissionHandler(threadId: string, runtimeDir: string): CanUseToolFn {
+function createRuntimePermissionHandler(threadId: string, runtimeDir: string, workspaceRoot: string): CanUseToolFn {
+  const policy = loadPermissionPolicy(workspaceRoot);
   return async (toolName: string, input: Record<string, unknown>): Promise<PermissionResult> => {
+    const policyDecision = decideToolPermission(policy, toolName, input);
+    if (policyDecision.action === 'allow') {
+      return {
+        behavior: 'allow',
+        updatedInput: input,
+      };
+    }
+    if (policyDecision.action === 'deny') {
+      return {
+        behavior: 'deny',
+        message: policyDecision.reason ?? `Denied by policy for ${toolName}`,
+      };
+    }
+
     await ensureRuntimeDirs(runtimeDir);
     const requestId = newApprovalRequestId();
     const paths = getRuntimePaths(runtimeDir);
@@ -118,11 +134,12 @@ function createRuntimePermissionHandler(threadId: string, runtimeDir: string): C
 export async function runWorker(core: LeslieCore, flags: Record<string, unknown>) {
   const threadId = requiredString(flags.thread, 'thread');
   const runtimeDir = process.env[LESLIE_RUNTIME_DIR_ENV];
+  const workspaceRoot = core.workspaceRoot;
 
   const canUseTool =
     typeof runtimeDir === 'string' && runtimeDir.length > 0
-      ? createRuntimePermissionHandler(threadId, runtimeDir)
-      : createInteractivePermissionHandler();
+      ? createRuntimePermissionHandler(threadId, runtimeDir, workspaceRoot)
+      : createInteractivePermissionHandler(workspaceRoot);
 
   const onMessage =
     typeof runtimeDir === 'string' && runtimeDir.length > 0

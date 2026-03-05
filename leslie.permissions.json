@@ -1,0 +1,21 @@
+{
+  "default": "allow",
+  "bash": {
+    "deny": [
+      "\\brm\\s+-rf\\b",
+      "\\bmkfs\\b",
+      "\\bfdisk\\b|\\bparted\\b",
+      "\\bdd\\b\\s+.*\\bof=/dev/",
+      "\\bchmod\\b\\s+-R\\s+777\\s+/",
+      "\\bchown\\b\\s+-R\\b.*\\s+/",
+      "\\bshutdown\\b|\\breboot\\b|\\bhalt\\b|\\bpoweroff\\b",
+      ">\\s*/dev/(sd|disk)"
+    ],
+    "confirm": [
+      "\\bcurl\\b.+\\|\\s*(sh|bash)\\b",
+      "\\bwget\\b.+\\|\\s*(sh|bash)\\b",
+      "\\bgit\\s+push\\s+.*--force\\b",
+      "\\bdocker\\s+system\\s+prune\\b"
+    ]
+  }
+}

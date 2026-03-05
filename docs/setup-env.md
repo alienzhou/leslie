@@ -61,3 +61,25 @@ EOF
 | `ANTHROPIC_BASE_URL` | API 基础 URL（如 kwaipilot 本地服务） |
 | `ANTHROPIC_MODEL` | 默认模型 |
 | `ANTHROPIC_DEFAULT_*_MODEL` | 各系列默认模型（Haiku/Opus/Sonnet） |
+
+## Tool 权限策略配置
+
+Leslie 默认会读取项目根目录的 `leslie.permissions.json`，用于控制 Claude Code 的工具授权策略。
+
+- 默认策略：`default = allow`（默认放行）
+- 可配置项：
+  - `bash.deny`：命中即拒绝
+  - `bash.confirm`：命中才弹出确认
+- 本地覆盖：可在 `.leslie/permissions.json` 追加项目私有规则（不会进入 Git）
+
+示例（默认已内置在仓库）：
+
+```json
+{
+  "default": "allow",
+  "bash": {
+    "deny": ["\\brm\\s+-rf\\b"],
+    "confirm": ["\\bcurl\\b.+\\|\\s*(sh|bash)\\b"]
+  }
+}
+```
