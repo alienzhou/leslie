@@ -55,6 +55,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
   });
   stderr.write(`[run] objective ${objective.objectiveId} started\n`);
   stderr.write(`[run] root thread ${rootThreadId} started in background\n`);
+  stderr.write(`[run] logs directory ${objective.logDir}\n`);
 
   const runtimePaths = getRuntimePaths(runtimeDir);
   const ui: RunTui | null = enableTui ? createRunTui(title, objective.objectiveId) : null;
@@ -311,6 +312,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
       title: objective.title,
       status: 'completed',
       runtime_dir: runtimeDir,
+      logs_dir: objective.logDir,
     },
   };
 }

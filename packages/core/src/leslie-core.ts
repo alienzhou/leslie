@@ -82,11 +82,15 @@ export class LeslieCore {
     await this.objectivesStore.initIfMissing();
   }
 
-  public async createObjective(title: string): Promise<{ objectiveId: string; title: string }> {
+  public async createObjective(
+    title: string,
+  ): Promise<{ objectiveId: string; title: string; logDir: string }> {
     const objective = await withRetry(() => this.objectiveManager.create(title), {
       retryableCodes: [],
     });
+    const logDir = path.join(this.options.workspaceRoot, '.leslie', 'logs', objective.id);
     const logger = await createLogger({
+      workspaceRoot: this.options.workspaceRoot,
       objectiveId: objective.id,
       debugMode: this.options.debugMode,
     });
@@ -94,6 +98,7 @@ export class LeslieCore {
     return {
       objectiveId: objective.id,
       title: objective.title,
+      logDir,
     };
   }
 

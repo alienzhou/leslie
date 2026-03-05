@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { nowIso } from '../utils/time.js';
 import { ensureDir } from '../utils/json.js';
@@ -22,6 +21,7 @@ export interface Logger {
 }
 
 export interface LoggerFactoryInput {
+  workspaceRoot: string;
   objectiveId: string;
   threadId?: string;
   debugMode?: boolean;
@@ -75,12 +75,12 @@ class FileLogger implements Logger {
 }
 
 export async function createLogger(input: LoggerFactoryInput): Promise<Logger> {
-  const objectiveLogDir = path.join(os.homedir(), '.leslie', 'logs', input.objectiveId);
+  const objectiveLogDir = path.join(input.workspaceRoot, '.leslie', 'logs', input.objectiveId);
   await ensureDir(objectiveLogDir);
 
   const fileName = input.threadId ? `${input.threadId}.log` : 'objective.log';
   const filePath = path.join(objectiveLogDir, fileName);
-  const minLevel = input.debugMode || process.env.LESLIE_DEBUG === '1' ? 'debug' : 'info';
+  const minLevel = process.env.LESLIE_LOG_LEVEL === 'info' ? 'info' : 'debug';
 
   return new FileLogger(filePath, minLevel, {
     objectiveId: input.objectiveId,
