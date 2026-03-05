@@ -29,6 +29,7 @@ interface UiState {
   pendingApprovals: ApprovalRequest[];
   filterMode: 'all' | 'active';
   logScrollOffset: number;
+  showHelp: boolean;
 }
 
 class TuiStore {
@@ -46,6 +47,7 @@ class TuiStore {
       pendingApprovals: [],
       filterMode: 'all',
       logScrollOffset: 0,
+      showHelp: false,
     };
   }
 
@@ -200,6 +202,11 @@ class TuiStore {
     this.emit();
   }
 
+  public toggleHelp(): void {
+    this.state = { ...this.state, showHelp: !this.state.showHelp };
+    this.emit();
+  }
+
   private visibleOrder(mode: 'all' | 'active' = this.state.filterMode): string[] {
     if (mode === 'all') {
       return this.state.order;
@@ -262,6 +269,8 @@ function TuiApp({ store }: { store: TuiStore }) {
       store.moveSelection(-1);
     } else if (key.downArrow) {
       store.moveSelection(1);
+    } else if (_input === '?') {
+      store.toggleHelp();
     } else if (_input.toLowerCase() === 'f') {
       store.toggleFilterMode();
     } else if (_input.toLowerCase() === 'j') {
@@ -288,6 +297,17 @@ function TuiApp({ store }: { store: TuiStore }) {
       <Text>
         leslie run | objective={state.objectiveId} | {state.title}
       </Text>
+      <Text>keys: ↑/↓ select | f filter | j/k logs | ? help</Text>
+      {state.showHelp ? (
+        <Box flexDirection="column">
+          <Text>Help</Text>
+          <Text>↑/↓: select thread</Text>
+          <Text>f: toggle thread filter (all/active)</Text>
+          <Text>j/k: scroll selected thread logs</Text>
+          <Text>?: toggle this help panel</Text>
+          <Text>Approval mode: y allow, n deny</Text>
+        </Box>
+      ) : null}
       <Box>
         <Box width={48} flexDirection="column" marginRight={2}>
           <Text>Threads (filter={state.filterMode})</Text>
@@ -331,7 +351,7 @@ function TuiApp({ store }: { store: TuiStore }) {
           <Text>Press y to allow, n to deny</Text>
         </Box>
       ) : (
-        <Text>Up/Down: select thread | f: all/active | j/k: scroll logs | Waiting for events...</Text>
+        <Text>Waiting for events...</Text>
       )}
     </Box>
   );
