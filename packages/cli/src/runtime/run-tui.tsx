@@ -27,6 +27,8 @@ interface UiState {
   threads: Record<string, ThreadView>;
   order: string[];
   pendingApprovals: ApprovalRequest[];
+  filterMode: 'all' | 'active';
+  logScrollOffset: number;
 }
 
 class TuiStore {
@@ -42,6 +44,8 @@ class TuiStore {
       threads: {},
       order: [],
       pendingApprovals: [],
+      filterMode: 'all',
+      logScrollOffset: 0,
     };
   }
 
@@ -159,16 +163,48 @@ class TuiStore {
   }
 
   public moveSelection(delta: -1 | 1): void {
-    if (this.state.order.length === 0) {
+    const visibleOrder = this.visibleOrder();
+    if (visibleOrder.length === 0) {
       return;
     }
     const selected = this.state.selectedThreadId;
-    const index = selected ? this.state.order.indexOf(selected) : 0;
+    const index = selected ? visibleOrder.indexOf(selected) : 0;
     const base = index >= 0 ? index : 0;
-    const nextIndex = Math.min(this.state.order.length - 1, Math.max(0, base + delta));
-    const nextSelected = this.state.order[nextIndex] ?? null;
+    const nextIndex = Math.min(visibleOrder.length - 1, Math.max(0, base + delta));
+    const nextSelected = visibleOrder[nextIndex] ?? null;
     this.state = { ...this.state, selectedThreadId: nextSelected };
     this.emit();
+  }
+
+  public toggleFilterMode(): void {
+    const nextMode = this.state.filterMode === 'all' ? 'active' : 'all';
+    const visibleOrder = this.visibleOrder(nextMode);
+    this.state = {
+      ...this.state,
+      filterMode: nextMode,
+      selectedThreadId:
+        this.state.selectedThreadId && visibleOrder.includes(this.state.selectedThreadId)
+          ? this.state.selectedThreadId
+          : (visibleOrder[0] ?? null),
+      logScrollOffset: 0,
+    };
+    this.emit();
+  }
+
+  public scrollLogs(delta: number): void {
+    const nextOffset = Math.max(0, this.state.logScrollOffset + delta);
+    if (nextOffset === this.state.logScrollOffset) {
+      return;
+    }
+    this.state = { ...this.state, logScrollOffset: nextOffset };
+    this.emit();
+  }
+
+  private visibleOrder(mode: 'all' | 'active' = this.state.filterMode): string[] {
+    if (mode === 'all') {
+      return this.state.order;
+    }
+    return this.state.order.filter((id) => this.state.threads[id]?.status === 'active');
   }
 
   public requestApproval(input: {
@@ -226,10 +262,26 @@ function TuiApp({ store }: { store: TuiStore }) {
       store.moveSelection(-1);
     } else if (key.downArrow) {
       store.moveSelection(1);
+    } else if (_input.toLowerCase() === 'f') {
+      store.toggleFilterMode();
+    } else if (_input.toLowerCase() === 'j') {
+      store.scrollLogs(1);
+    } else if (_input.toLowerCase() === 'k') {
+      store.scrollLogs(-1);
     }
   });
 
-  const threadRows = state.order.map((id) => state.threads[id]).filter(Boolean) as ThreadView[];
+  const visibleOrder =
+    state.filterMode === 'all'
+      ? state.order
+      : state.order.filter((id) => state.threads[id]?.status === 'active');
+  const threadRows = visibleOrder.map((id) => state.threads[id]).filter(Boolean) as ThreadView[];
+  const selectedLines = selected?.lines ?? [];
+  const logWindowSize = 18;
+  const maxStart = Math.max(0, selectedLines.length - logWindowSize);
+  const start = Math.max(0, maxStart - state.logScrollOffset);
+  const end = Math.min(selectedLines.length, start + logWindowSize);
+  const pageLines = selectedLines.slice(start, end);
 
   return (
     <Box flexDirection="column">
@@ -238,7 +290,7 @@ function TuiApp({ store }: { store: TuiStore }) {
       </Text>
       <Box>
         <Box width={48} flexDirection="column" marginRight={2}>
-          <Text>Threads</Text>
+          <Text>Threads (filter={state.filterMode})</Text>
           {threadRows.map((thread) => {
             const selectedMark = thread.id === state.selectedThreadId ? '>' : ' ';
             const relation = thread.parentId ? ` <- ${thread.parentId}` : '';
@@ -260,9 +312,14 @@ function TuiApp({ store }: { store: TuiStore }) {
               {selected.referencedBy.join(',') || '-'}
             </Text>
           ) : null}
-          {(selected?.lines ?? []).slice(-18).map((line, index) => (
+          {pageLines.map((line, index) => (
             <Text key={`${selected?.id ?? 'none'}-${index}`}>{line}</Text>
           ))}
+          {selected ? (
+            <Text>
+              log window: {start + 1}-{end} / {selectedLines.length}
+            </Text>
+          ) : null}
         </Box>
       </Box>
       {pendingApproval ? (
@@ -274,7 +331,7 @@ function TuiApp({ store }: { store: TuiStore }) {
           <Text>Press y to allow, n to deny</Text>
         </Box>
       ) : (
-        <Text>Up/Down: select thread | Waiting for events...</Text>
+        <Text>Up/Down: select thread | f: all/active | j/k: scroll logs | Waiting for events...</Text>
       )}
     </Box>
   );
