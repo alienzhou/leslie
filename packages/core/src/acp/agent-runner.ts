@@ -45,7 +45,7 @@ export class AgentRunner {
         resume: resumeSessionId,
         maxBudgetUsd,
         canUseTool: canUseToolFn
-          ? async (toolName, input, { signal: _signal }) => {
+          ? async (toolName, input) => {
               const result = await canUseToolFn(toolName, input as Record<string, unknown>);
               if (result.behavior === 'allow') {
                 return { behavior: 'allow' as const, updatedInput: result.updatedInput };
