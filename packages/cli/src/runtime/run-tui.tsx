@@ -251,6 +251,49 @@ function useStore(store: TuiStore): UiState {
   return state;
 }
 
+function formatThreadStatus(status: string): string {
+  if (status === 'active') {
+    return 'running';
+  }
+  if (status === 'suspended') {
+    return 'suspended';
+  }
+  if (status === 'completed') {
+    return 'done';
+  }
+  if (status === 'cancelled') {
+    return 'cancelled';
+  }
+  if (status === 'archived') {
+    return 'archived';
+  }
+  return status;
+}
+
+function threadStatusColor(status: string): 'green' | 'yellow' | 'blue' | 'red' | 'gray' {
+  if (status === 'active') {
+    return 'green';
+  }
+  if (status === 'suspended') {
+    return 'yellow';
+  }
+  if (status === 'completed') {
+    return 'blue';
+  }
+  if (status === 'cancelled') {
+    return 'red';
+  }
+  return 'gray';
+}
+
+function truncateLine(text: string, max = 120): string {
+  const line = text.trimEnd().replace(/\t/g, '  ');
+  if (line.length <= max) {
+    return line;
+  }
+  return `${line.slice(0, max - 3)}...`;
+}
+
 function TuiApp({ store }: { store: TuiStore }) {
   const state = useStore(store);
   const selected = state.selectedThreadId ? state.threads[state.selectedThreadId] : null;
@@ -291,67 +334,148 @@ function TuiApp({ store }: { store: TuiStore }) {
   const start = Math.max(0, maxStart - state.logScrollOffset);
   const end = Math.min(selectedLines.length, start + logWindowSize);
   const pageLines = selectedLines.slice(start, end);
+  const statusCount = state.order.reduce(
+    (acc, id) => {
+      const status = state.threads[id]?.status ?? 'unknown';
+      acc.total += 1;
+      if (status === 'active') {
+        acc.active += 1;
+      } else if (status === 'suspended') {
+        acc.suspended += 1;
+      } else if (status === 'completed') {
+        acc.completed += 1;
+      } else {
+        acc.other += 1;
+      }
+      return acc;
+    },
+    { total: 0, active: 0, suspended: 0, completed: 0, other: 0 },
+  );
 
   return (
-    <Box flexDirection="column">
-      <Text>
-        leslie run | objective={state.objectiveId} | {state.title}
-      </Text>
-      <Text>keys: ↑/↓ select | f filter | j/k logs | ? help</Text>
+    <Box flexDirection="column" paddingX={1}>
+      <Box
+        flexDirection="column"
+        borderStyle="round"
+        borderColor="cyan"
+        paddingX={1}
+        marginBottom={1}
+      >
+        <Text color="cyanBright">Leslie Run Dashboard</Text>
+        <Text>
+          objective: <Text color="cyan">{state.objectiveId}</Text>
+        </Text>
+        <Text>
+          title: <Text color="white">{truncateLine(state.title, 120)}</Text>
+        </Text>
+        <Text>
+          filter: <Text color={state.filterMode === 'all' ? 'blue' : 'green'}>{state.filterMode}</Text> | threads:
+          total=<Text color="cyan">{String(statusCount.total)}</Text> running=
+          <Text color="green">{String(statusCount.active)}</Text> suspended=
+          <Text color="yellow">{String(statusCount.suspended)}</Text> done=
+          <Text color="blue">{String(statusCount.completed)}</Text>
+          {statusCount.other > 0 ? (
+            <Text>
+              {' '}
+              other=<Text color="gray">{String(statusCount.other)}</Text>
+            </Text>
+          ) : null}
+        </Text>
+        <Text color="gray">
+          keys: ↑/↓ select thread | f filter | j/k scroll logs | ? help
+        </Text>
+      </Box>
       {state.showHelp ? (
-        <Box flexDirection="column">
-          <Text>Help</Text>
-          <Text>↑/↓: select thread</Text>
-          <Text>f: toggle thread filter (all/active)</Text>
-          <Text>j/k: scroll selected thread logs</Text>
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderColor="yellow"
+          paddingX={1}
+          marginBottom={1}
+        >
+          <Text color="yellowBright">Help</Text>
+          <Text>↑/↓: move selected thread</Text>
+          <Text>f: toggle thread filter (all/running only)</Text>
+          <Text>j/k: scroll selected thread logs (newest at bottom)</Text>
           <Text>?: toggle this help panel</Text>
           <Text>Approval mode: y allow, n deny</Text>
         </Box>
       ) : null}
       <Box>
-        <Box width={48} flexDirection="column" marginRight={2}>
-          <Text>Threads (filter={state.filterMode})</Text>
+        <Box
+          width={64}
+          flexDirection="column"
+          marginRight={1}
+          borderStyle="round"
+          borderColor="magenta"
+          paddingX={1}
+        >
+          <Text color="magentaBright">Threads</Text>
+          <Text color="gray">filter={state.filterMode}</Text>
           {threadRows.map((thread) => {
             const selectedMark = thread.id === state.selectedThreadId ? '>' : ' ';
-            const relation = thread.parentId ? ` <- ${thread.parentId}` : '';
-            const counts = ` c:${thread.children.length} r:${thread.referencesTo.length}`;
             return (
-              <Text key={thread.id}>
-                {selectedMark} [{thread.status}] {thread.id}
-                {relation}
-                {counts}
-              </Text>
+              <Box key={thread.id} flexDirection="column" marginTop={1}>
+                <Text>
+                  <Text color={thread.id === state.selectedThreadId ? 'cyanBright' : 'gray'}>{selectedMark}</Text>{' '}
+                  <Text color={threadStatusColor(thread.status)}>[{formatThreadStatus(thread.status)}]</Text> {thread.id}
+                </Text>
+                <Text color="gray">
+                  {'  '}
+                  parent={thread.parentId ?? '-'} | children={thread.children.length} | refs_to={thread.referencesTo.length} |
+                  referenced_by={thread.referencedBy.length}
+                </Text>
+              </Box>
             );
           })}
+          {threadRows.length === 0 ? <Text color="gray">(no threads in current filter)</Text> : null}
         </Box>
-        <Box flexDirection="column" flexGrow={1}>
-          <Text>Logs ({selected?.id ?? 'none'})</Text>
+        <Box
+          flexDirection="column"
+          flexGrow={1}
+          borderStyle="round"
+          borderColor="blue"
+          paddingX={1}
+        >
+          <Text color="blueBright">Logs ({selected?.id ?? 'none'})</Text>
           {selected ? (
-            <Text>
-              rel: children={selected.children.join(',') || '-'} | refs_to={selected.referencesTo.join(',') || '-'} | referenced_by=
-              {selected.referencedBy.join(',') || '-'}
-            </Text>
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color="gray">parent: {selected.parentId ?? '-'}</Text>
+              <Text color="gray">children: {selected.children.join(', ') || '-'}</Text>
+              <Text color="gray">refs_to: {selected.referencesTo.join(', ') || '-'}</Text>
+              <Text color="gray">referenced_by: {selected.referencedBy.join(', ') || '-'}</Text>
+              <Text color="gray">----------------------------------------</Text>
+            </Box>
           ) : null}
           {pageLines.map((line, index) => (
-            <Text key={`${selected?.id ?? 'none'}-${index}`}>{line}</Text>
+            <Text key={`${selected?.id ?? 'none'}-${index}`}>{truncateLine(line, 140)}</Text>
           ))}
           {selected ? (
-            <Text>
-              log window: {start + 1}-{end} / {selectedLines.length}
+            <Text color="gray">
+              log window: {selectedLines.length === 0 ? 0 : start + 1}-{end} / {selectedLines.length}
             </Text>
           ) : null}
+          {!selected ? <Text color="gray">Select a thread to view logs.</Text> : null}
         </Box>
       </Box>
       {pendingApproval ? (
-        <Box marginTop={1} flexDirection="column">
+        <Box
+          marginTop={1}
+          flexDirection="column"
+          borderStyle="round"
+          borderColor="yellow"
+          paddingX={1}
+        >
           <Text>
-            Approval needed: [{pendingApproval.threadId}] {pendingApproval.toolName}
+            <Text color="yellowBright">Approval needed:</Text> [{pendingApproval.threadId}] {pendingApproval.toolName}
           </Text>
           <Text>{pendingApproval.inputPreview}</Text>
-          <Text>Press y to allow, n to deny</Text>
+          <Text color="yellow">Press y to allow, n to deny</Text>
         </Box>
       ) : (
-        <Text>Waiting for events...</Text>
+        <Box marginTop={1} borderStyle="round" borderColor="gray" paddingX={1}>
+          <Text color="gray">Waiting for events...</Text>
+        </Box>
       )}
     </Box>
   );
