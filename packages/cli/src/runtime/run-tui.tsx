@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Text, useInput, render } from 'ink';
 
 interface ThreadView {
@@ -10,6 +10,7 @@ interface ThreadView {
   referencedBy: string[];
   lastLine: string;
   lines: string[];
+  updatedAt: number;
 }
 
 interface ApprovalRequest {
@@ -28,7 +29,9 @@ interface UiState {
   order: string[];
   pendingApprovals: ApprovalRequest[];
   filterMode: 'all' | 'active';
+  activeTab: 'overview' | 'logs';
   logScrollOffset: number;
+  overviewScrollOffset: number;
   showHelp: boolean;
 }
 
@@ -46,7 +49,9 @@ class TuiStore {
       order: [],
       pendingApprovals: [],
       filterMode: 'all',
+      activeTab: 'overview',
       logScrollOffset: 0,
+      overviewScrollOffset: 0,
       showHelp: false,
     };
   }
@@ -77,6 +82,7 @@ class TuiStore {
       referencedBy: [],
       lastLine: '',
       lines: [],
+      updatedAt: Date.now(),
     };
     const nextLines = input.appendLine
       ? [...current.lines.slice(-79), input.appendLine]
@@ -87,6 +93,7 @@ class TuiStore {
       parentId: input.parentId === undefined ? current.parentId : input.parentId,
       lastLine: input.appendLine ?? current.lastLine,
       lines: nextLines,
+      updatedAt: Date.now(),
     };
     this.state = {
       ...this.state,
@@ -124,6 +131,7 @@ class TuiStore {
           referencedBy: thread.referencedBy ?? [],
           lastLine: '',
           lines: [],
+          updatedAt: Date.now(),
         };
         changed = true;
         continue;
@@ -145,6 +153,7 @@ class TuiStore {
           children: nextChildren,
           referencesTo: nextReferencesTo,
           referencedBy: nextReferencedBy,
+          updatedAt: Date.now(),
         };
         changed = true;
       }
@@ -189,16 +198,40 @@ class TuiStore {
           ? this.state.selectedThreadId
           : (visibleOrder[0] ?? null),
       logScrollOffset: 0,
+      overviewScrollOffset: 0,
     };
     this.emit();
   }
 
-  public scrollLogs(delta: number): void {
-    const nextOffset = Math.max(0, this.state.logScrollOffset + delta);
-    if (nextOffset === this.state.logScrollOffset) {
+  public toggleTab(): void {
+    const nextTab = this.state.activeTab === 'overview' ? 'logs' : 'overview';
+    this.state = { ...this.state, activeTab: nextTab };
+    this.emit();
+  }
+
+  public setTab(tab: 'overview' | 'logs'): void {
+    if (this.state.activeTab === tab) {
       return;
     }
-    this.state = { ...this.state, logScrollOffset: nextOffset };
+    this.state = { ...this.state, activeTab: tab };
+    this.emit();
+  }
+
+  public scrollActivePane(delta: number): void {
+    if (this.state.activeTab === 'logs') {
+      const nextOffset = Math.max(0, this.state.logScrollOffset + delta);
+      if (nextOffset === this.state.logScrollOffset) {
+        return;
+      }
+      this.state = { ...this.state, logScrollOffset: nextOffset };
+      this.emit();
+      return;
+    }
+    const nextOffset = Math.max(0, this.state.overviewScrollOffset + delta);
+    if (nextOffset === this.state.overviewScrollOffset) {
+      return;
+    }
+    this.state = { ...this.state, overviewScrollOffset: nextOffset };
     this.emit();
   }
 
@@ -294,10 +327,54 @@ function truncateLine(text: string, max = 120): string {
   return `${line.slice(0, max - 3)}...`;
 }
 
+function ageLabel(updatedAt: number, now: number): string {
+  const sec = Math.max(0, Math.floor((now - updatedAt) / 1000));
+  if (sec < 2) {
+    return 'now';
+  }
+  if (sec < 60) {
+    return `${sec}s`;
+  }
+  const min = Math.floor(sec / 60);
+  if (min < 60) {
+    return `${min}m`;
+  }
+  const hour = Math.floor(min / 60);
+  return `${hour}h`;
+}
+
 function TuiApp({ store }: { store: TuiStore }) {
   const state = useStore(store);
+  const [viewport, setViewport] = useState({
+    columns: process.stdout.columns ?? 120,
+    rows: process.stdout.rows ?? 40,
+  });
+  const [frame, setFrame] = useState(0);
   const selected = state.selectedThreadId ? state.threads[state.selectedThreadId] : null;
   const pendingApproval = state.pendingApprovals[0];
+  const now = Date.now();
+  const spinnerFrames = ['|', '/', '-', '\\'];
+  const spinner = spinnerFrames[frame % spinnerFrames.length] ?? '|';
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFrame((value) => value + 1);
+    }, 250);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      setViewport({
+        columns: process.stdout.columns ?? 120,
+        rows: process.stdout.rows ?? 40,
+      });
+    };
+    process.stdout.on('resize', onResize);
+    return () => {
+      process.stdout.off('resize', onResize);
+    };
+  }, []);
 
   useInput((_input, key) => {
     if (pendingApproval) {
@@ -316,10 +393,16 @@ function TuiApp({ store }: { store: TuiStore }) {
       store.toggleHelp();
     } else if (_input.toLowerCase() === 'f') {
       store.toggleFilterMode();
+    } else if (key.tab || _input.toLowerCase() === 't') {
+      store.toggleTab();
+    } else if (_input.toLowerCase() === 'o') {
+      store.setTab('overview');
+    } else if (_input.toLowerCase() === 'l') {
+      store.setTab('logs');
     } else if (_input.toLowerCase() === 'j') {
-      store.scrollLogs(1);
+      store.scrollActivePane(1);
     } else if (_input.toLowerCase() === 'k') {
-      store.scrollLogs(-1);
+      store.scrollActivePane(-1);
     }
   });
 
@@ -328,12 +411,37 @@ function TuiApp({ store }: { store: TuiStore }) {
       ? state.order
       : state.order.filter((id) => state.threads[id]?.status === 'active');
   const threadRows = visibleOrder.map((id) => state.threads[id]).filter(Boolean) as ThreadView[];
+  const columns = viewport.columns;
+  const rows = viewport.rows;
+  const dashboardHeight = Math.max(24, rows - 1);
+  const bodyHeight = Math.max(10, dashboardHeight - 8 - (state.showHelp ? 7 : 0));
+  const leftPaneWidth = Math.max(52, Math.floor(columns * 0.42));
+  const rightPaneWidth = Math.max(40, columns - leftPaneWidth - 6);
+
   const selectedLines = selected?.lines ?? [];
-  const logWindowSize = 18;
+  const logWindowSize = Math.max(6, bodyHeight - 8);
   const maxStart = Math.max(0, selectedLines.length - logWindowSize);
   const start = Math.max(0, maxStart - state.logScrollOffset);
   const end = Math.min(selectedLines.length, start + logWindowSize);
   const pageLines = selectedLines.slice(start, end);
+  const selectedIndex = selected ? threadRows.findIndex((thread) => thread.id === selected.id) : 0;
+  const leftListWindowSize = Math.max(3, bodyHeight - 5);
+  const leftStart = Math.max(0, Math.min(Math.max(0, selectedIndex), Math.max(0, threadRows.length - leftListWindowSize)));
+  const leftEnd = Math.min(threadRows.length, leftStart + leftListWindowSize);
+  const leftRows = threadRows.slice(leftStart, leftEnd);
+  const overviewLines = useMemo(() => {
+    return threadRows.map((thread) => {
+      const parentText = thread.parentId ?? '-';
+      const childText = thread.children.length > 0 ? thread.children.join(',') : '-';
+      const refsToText = thread.referencesTo.length > 0 ? thread.referencesTo.join(',') : '-';
+      const refsByText = thread.referencedBy.length > 0 ? thread.referencedBy.join(',') : '-';
+      return `${thread.id} [${formatThreadStatus(thread.status)}] p:${parentText} c:${childText} refs:${refsToText} by:${refsByText}`;
+    });
+  }, [threadRows]);
+  const overviewWindowSize = Math.max(6, bodyHeight - 8);
+  const overviewStart = Math.max(0, Math.min(state.overviewScrollOffset, Math.max(0, overviewLines.length - overviewWindowSize)));
+  const overviewEnd = Math.min(overviewLines.length, overviewStart + overviewWindowSize);
+  const overviewPageLines = overviewLines.slice(overviewStart, overviewEnd);
   const statusCount = state.order.reduce(
     (acc, id) => {
       const status = state.threads[id]?.status ?? 'unknown';
@@ -353,7 +461,7 @@ function TuiApp({ store }: { store: TuiStore }) {
   );
 
   return (
-    <Box flexDirection="column" paddingX={1}>
+    <Box flexDirection="column" paddingX={1} height={dashboardHeight}>
       <Box
         flexDirection="column"
         borderStyle="round"
@@ -381,8 +489,12 @@ function TuiApp({ store }: { store: TuiStore }) {
             </Text>
           ) : null}
         </Text>
+        <Text>
+          tab: <Text color={state.activeTab === 'overview' ? 'green' : 'blue'}>{state.activeTab}</Text> | viewport:
+          <Text color="cyan"> {columns}x{rows}</Text>
+        </Text>
         <Text color="gray">
-          keys: ↑/↓ select thread | f filter | j/k scroll logs | ? help
+          keys: ↑/↓ select thread | tab/t switch pane | o/l jump pane | f filter | j/k scroll | ? help
         </Text>
       </Box>
       {state.showHelp ? (
@@ -395,15 +507,17 @@ function TuiApp({ store }: { store: TuiStore }) {
         >
           <Text color="yellowBright">Help</Text>
           <Text>↑/↓: move selected thread</Text>
+          <Text>tab/t: switch right pane tab (overview/logs)</Text>
+          <Text>o/l: jump to overview/logs pane</Text>
           <Text>f: toggle thread filter (all/running only)</Text>
-          <Text>j/k: scroll selected thread logs (newest at bottom)</Text>
+          <Text>j/k: scroll active right pane</Text>
           <Text>?: toggle this help panel</Text>
           <Text>Approval mode: y allow, n deny</Text>
         </Box>
       ) : null}
-      <Box>
+      <Box flexGrow={1} minHeight={bodyHeight}>
         <Box
-          width={64}
+          width={leftPaneWidth}
           flexDirection="column"
           marginRight={1}
           borderStyle="round"
@@ -411,51 +525,86 @@ function TuiApp({ store }: { store: TuiStore }) {
           paddingX={1}
         >
           <Text color="magentaBright">Threads</Text>
-          <Text color="gray">filter={state.filterMode}</Text>
-          {threadRows.map((thread) => {
+          <Text color="gray">filter={state.filterMode} | selected={state.selectedThreadId ?? '-'}</Text>
+          {leftRows.map((thread) => {
             const selectedMark = thread.id === state.selectedThreadId ? '>' : ' ';
+            const runningMark = thread.status === 'active' ? spinner : ' ';
             return (
               <Box key={thread.id} flexDirection="column" marginTop={1}>
                 <Text>
                   <Text color={thread.id === state.selectedThreadId ? 'cyanBright' : 'gray'}>{selectedMark}</Text>{' '}
-                  <Text color={threadStatusColor(thread.status)}>[{formatThreadStatus(thread.status)}]</Text> {thread.id}
+                  <Text color={threadStatusColor(thread.status)}>[{formatThreadStatus(thread.status)}]</Text> {thread.id}{' '}
+                  <Text color={thread.status === 'active' ? 'green' : 'gray'}>{runningMark}</Text>
                 </Text>
                 <Text color="gray">
                   {'  '}
                   parent={thread.parentId ?? '-'} | children={thread.children.length} | refs_to={thread.referencesTo.length} |
                   referenced_by={thread.referencedBy.length}
                 </Text>
+                <Text color="gray">
+                  {'  '}
+                  last={truncateLine(thread.lastLine || '(no updates yet)', Math.max(24, leftPaneWidth - 10))} | updated{' '}
+                  {ageLabel(thread.updatedAt, now)} ago
+                </Text>
               </Box>
             );
           })}
           {threadRows.length === 0 ? <Text color="gray">(no threads in current filter)</Text> : null}
+          {threadRows.length > leftListWindowSize ? (
+            <Text color="gray">
+              list window: {leftStart + 1}-{leftEnd} / {threadRows.length}
+            </Text>
+          ) : null}
         </Box>
         <Box
           flexDirection="column"
           flexGrow={1}
+          width={rightPaneWidth}
           borderStyle="round"
           borderColor="blue"
           paddingX={1}
         >
-          <Text color="blueBright">Logs ({selected?.id ?? 'none'})</Text>
-          {selected ? (
-            <Box flexDirection="column" marginBottom={1}>
-              <Text color="gray">parent: {selected.parentId ?? '-'}</Text>
-              <Text color="gray">children: {selected.children.join(', ') || '-'}</Text>
-              <Text color="gray">refs_to: {selected.referencesTo.join(', ') || '-'}</Text>
-              <Text color="gray">referenced_by: {selected.referencedBy.join(', ') || '-'}</Text>
-              <Text color="gray">----------------------------------------</Text>
-            </Box>
-          ) : null}
-          {pageLines.map((line, index) => (
-            <Text key={`${selected?.id ?? 'none'}-${index}`}>{truncateLine(line, 140)}</Text>
-          ))}
-          {selected ? (
-            <Text color="gray">
-              log window: {selectedLines.length === 0 ? 0 : start + 1}-{end} / {selectedLines.length}
-            </Text>
-          ) : null}
-          {!selected ? <Text color="gray">Select a thread to view logs.</Text> : null}
+          <Text color="blueBright">
+            {state.activeTab === 'overview' ? 'Relations Overview' : `Logs (${selected?.id ?? 'none'})`}
+          </Text>
+          {state.activeTab === 'overview' ? (
+            <>
+              <Box flexDirection="column" marginBottom={1}>
+                <Text color="gray">
+                  structure scope: current objective | total threads: {threadRows.length}
+                </Text>
+                <Text color="gray">selected: {selected?.id ?? '-'}</Text>
+                <Text color="gray">----------------------------------------</Text>
+              </Box>
+              {overviewPageLines.map((line, index) => (
+                <Text key={`overview-${index}`}>{truncateLine(line, Math.max(30, rightPaneWidth - 6))}</Text>
+              ))}
+              <Text color="gray">
+                overview window: {overviewLines.length === 0 ? 0 : overviewStart + 1}-{overviewEnd} / {overviewLines.length}
+              </Text>
+            </>
+          ) : (
+            <>
+              {selected ? (
+                <Box flexDirection="column" marginBottom={1}>
+                  <Text color="gray">parent: {selected.parentId ?? '-'}</Text>
+                  <Text color="gray">children: {selected.children.join(', ') || '-'}</Text>
+                  <Text color="gray">refs_to: {selected.referencesTo.join(', ') || '-'}</Text>
+                  <Text color="gray">referenced_by: {selected.referencedBy.join(', ') || '-'}</Text>
+                  <Text color="gray">----------------------------------------</Text>
+                </Box>
+              ) : null}
+              {pageLines.map((line, index) => (
+                <Text key={`${selected?.id ?? 'none'}-${index}`}>{truncateLine(line, Math.max(30, rightPaneWidth - 6))}</Text>
+              ))}
+              {selected ? (
+                <Text color="gray">
+                  log window: {selectedLines.length === 0 ? 0 : start + 1}-{end} / {selectedLines.length}
+                </Text>
+              ) : null}
+              {!selected ? <Text color="gray">Select a thread to view logs.</Text> : null}
+            </>
+          )}
         </Box>
       </Box>
       {pendingApproval ? (
