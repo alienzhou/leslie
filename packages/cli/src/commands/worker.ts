@@ -20,6 +20,29 @@ interface ApprovalResponsePayload {
   message?: string;
 }
 
+interface WorkerLogEvent {
+  event: 'worker_started' | 'worker_finished' | 'worker_failed';
+  thread_id: string;
+  timestamp: string;
+  runtime_dir?: string;
+  success?: boolean;
+  session_id?: string;
+  duration_ms?: number;
+  cost_usd?: number;
+  num_turns?: number;
+  errors?: string[];
+}
+
+function getWorkerLogPath(workspaceRoot: string, threadId: string): string {
+  return path.join(workspaceRoot, '.leslie', 'logs', 'workers', `${threadId}.ndjson`);
+}
+
+async function appendWorkerLog(workspaceRoot: string, threadId: string, payload: WorkerLogEvent): Promise<void> {
+  const logPath = getWorkerLogPath(workspaceRoot, threadId);
+  await fs.mkdir(path.dirname(logPath), { recursive: true });
+  await fs.appendFile(logPath, `${JSON.stringify(payload)}\n`, 'utf-8');
+}
+
 async function waitForApprovalResponse(
   responseFilePath: string,
   responseDir: string,
@@ -155,6 +178,13 @@ export async function runWorker(core: LeslieCore, flags: Record<string, unknown>
         }
       : createOutputRenderer();
 
+  await appendWorkerLog(workspaceRoot, threadId, {
+    event: 'worker_started',
+    thread_id: threadId,
+    timestamp: new Date().toISOString(),
+    runtime_dir: runtimeDir,
+  });
+
   try {
     const agentResult = await core.runAgent(threadId, {
       canUseTool,
@@ -169,6 +199,19 @@ export async function runWorker(core: LeslieCore, flags: Record<string, unknown>
         timestamp: new Date().toISOString(),
       });
     }
+
+    await appendWorkerLog(workspaceRoot, threadId, {
+      event: 'worker_finished',
+      thread_id: threadId,
+      timestamp: new Date().toISOString(),
+      runtime_dir: runtimeDir,
+      success: agentResult.success,
+      session_id: agentResult.sessionId,
+      duration_ms: agentResult.durationMs,
+      cost_usd: agentResult.costUsd,
+      num_turns: agentResult.numTurns,
+      errors: agentResult.errors,
+    });
 
     return {
       success: agentResult.success,
@@ -186,6 +229,8 @@ export async function runWorker(core: LeslieCore, flags: Record<string, unknown>
       },
     };
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+
     if (runtimeDir) {
       await appendRuntimeEvent(runtimeDir, {
         type: 'worker_exit',
@@ -194,6 +239,16 @@ export async function runWorker(core: LeslieCore, flags: Record<string, unknown>
         timestamp: new Date().toISOString(),
       });
     }
+
+    await appendWorkerLog(workspaceRoot, threadId, {
+      event: 'worker_failed',
+      thread_id: threadId,
+      timestamp: new Date().toISOString(),
+      runtime_dir: runtimeDir,
+      success: false,
+      errors: [errorMsg],
+    });
+
     throw error;
   }
 }

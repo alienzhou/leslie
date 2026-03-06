@@ -1,4 +1,5 @@
 import type { LeslieCore } from '@vibe-x-ai/leslie-core';
+import path from 'node:path';
 import { createInteractivePermissionHandler } from '../agent/permission-prompt.js';
 import { createOutputRenderer } from '../agent/output-renderer.js';
 import { splitComma, requiredString } from '../utils.js';
@@ -52,12 +53,15 @@ export async function runSpawn(core: LeslieCore, flags: Record<string, unknown>)
         source: 'spawn',
       });
     }
+    const workerLogPath = path.join(core.workspaceRoot, '.leslie', 'logs', 'workers', `${threadId}.ndjson`);
     process.stderr.write(`\nThread ${threadId} started in background.\n`);
+    process.stderr.write(`Worker log: ${workerLogPath}\n`);
     return {
       success: true,
       data: {
         ...output.result,
         run_mode: 'background',
+        worker_log_path: workerLogPath,
       },
       warnings: output.warnings,
     };
