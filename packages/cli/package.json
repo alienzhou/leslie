@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@vibe-x-ai/leslie-core": "workspace:*",
+    "dotenv": "^16.4.5",
     "ink": "^6.8.0",
     "minimist": "^1.2.8",
     "react": "^19.2.4",

@@ -26,7 +26,29 @@ export ANTHROPIC_MODEL="kwaipilot-default"
 export ANTHROPIC_AUTH_TOKEN="Test" ANTHROPIC_BASE_URL="http://localhost:3000" ANTHROPIC_DEFAULT_HAIKU_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_OPUS_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_SONNET_MODEL="kwaipilot-default" ANTHROPIC_MODEL="kwaipilot-default"
 ```
 
-### 前置执行（推荐）
+### 配置文件方式（推荐）
+
+将环境变量写入 `.env` 文件，启动时通过 `--config` 指定：
+
+```bash
+# 1. 创建配置文件（如 leslie.kwaipilot.env）
+cat > leslie.kwaipilot.env << 'EOF'
+ANTHROPIC_AUTH_TOKEN=Test
+ANTHROPIC_BASE_URL=http://localhost:3000
+ANTHROPIC_DEFAULT_HAIKU_MODEL=kwaipilot-default
+ANTHROPIC_DEFAULT_OPUS_MODEL=kwaipilot-default
+ANTHROPIC_DEFAULT_SONNET_MODEL=kwaipilot-default
+ANTHROPIC_MODEL=kwaipilot-default
+EOF
+
+# 2. 启动时指定配置
+leslie run --config leslie.kwaipilot.env --title "Your task"
+leslie spawn --config leslie.kwaipilot.env --intent "Your task" --objective <objective-id>
+```
+
+示例文件见仓库根目录 `leslie.kwaipilot.env.example`。
+
+### 前置执行（单次会话）
 
 在运行 `leslie` 前先执行上述 `export`，再执行目标命令：
 

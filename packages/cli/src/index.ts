@@ -1,5 +1,6 @@
 import minimist from 'minimist';
 import { LeslieCore, isLeslieError } from '@vibe-x-ai/leslie-core';
+import { loadEnvConfig } from './config/env-loader.js';
 import { formatJson } from './formatters/json.js';
 import { formatTable } from './formatters/table.js';
 import { formatYaml } from './formatters/yaml.js';
@@ -53,6 +54,7 @@ function showHelp(): void {
     '  transcript --thread <thread-id> --chat <chat-id> --query <text> --assistant <text>',
     '',
     'Global flags:',
+    '  --config, -c <path>  Load env from .env file before running',
     '  --format json|table|yaml (default json)',
     '  --debug',
     '  --help',
@@ -72,6 +74,11 @@ export async function runCli(argv: string[]): Promise<void> {
   if (flags.help || command === 'help' || command === '') {
     showHelp();
     return;
+  }
+
+  const configPath = flags.config ?? flags.c;
+  if (typeof configPath === 'string' && configPath.length > 0) {
+    loadEnvConfig(configPath);
   }
 
   const format = normalizeFormat(flags.format);
