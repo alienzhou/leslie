@@ -653,6 +653,8 @@ function TuiApp({ store }: { store: TuiStore }) {
   const bodyHeight = Math.max(10, dashboardHeight - 8 - (state.showHelp ? 7 : 0));
   const leftPaneWidth = Math.max(52, Math.floor(columns * 0.42));
   const rightPaneWidth = Math.max(40, columns - leftPaneWidth - 6);
+  const objectiveWidth = Math.max(12, Math.floor(columns * 0.2));
+  const titleWidth = Math.max(24, columns - objectiveWidth - 32);
 
   const selectedLines = selected?.lines ?? [];
   const logWindowSize = Math.max(6, bodyHeight - 8);
@@ -746,7 +748,9 @@ function TuiApp({ store }: { store: TuiStore }) {
     <Box flexDirection="column" paddingX={1} height={dashboardHeight}>
       <Box flexDirection="column" marginBottom={1}>
         <Text>
-          <Text color="cyanBright" bold>Leslie</Text> <Text color="gray">|</Text> Obj: <Text color="cyan">{state.objectiveId}</Text> <Text color="gray">|</Text> <Text color="white">{truncateLine(state.title, 80)}</Text>
+          <Text color="cyanBright" bold>Leslie</Text> <Text color="gray">|</Text> Obj:{' '}
+          <Text color="cyan">{truncateLine(state.objectiveId, objectiveWidth)}</Text> <Text color="gray">|</Text>{' '}
+          <Text color="white">{truncateLine(state.title, titleWidth)}</Text>
         </Text>
         <Text>
           <Text color="gray">Threads:</Text> {statusCount.total} total (<Text color="green">{statusCount.active}</Text> running, <Text color="blue">{statusCount.completed}</Text> done) <Text color="gray">|</Text> <Text color="gray">Filter:</Text> <Text color="cyan">{state.filterMode}</Text> <Text color="gray">|</Text> <Text color="gray">Tab:</Text> <Text color="cyan">{state.activeTab}</Text>
@@ -774,9 +778,10 @@ function TuiApp({ store }: { store: TuiStore }) {
           <Text>Approval mode: y allow, n deny</Text>
         </Box>
       ) : null}
-      <Box flexGrow={1} minHeight={bodyHeight}>
+      <Box flexGrow={1} minHeight={bodyHeight} height={bodyHeight}>
         <Box
           width={leftPaneWidth}
+          height={bodyHeight}
           flexDirection="column"
           marginRight={1}
           borderStyle="single"
@@ -812,6 +817,7 @@ function TuiApp({ store }: { store: TuiStore }) {
           flexDirection="column"
           flexGrow={1}
           width={rightPaneWidth}
+          height={bodyHeight}
           borderStyle="single"
           borderColor="gray"
           paddingX={1}
@@ -849,7 +855,9 @@ function TuiApp({ store }: { store: TuiStore }) {
           ) : (
             <>
               {pageLines.map((line, index) => (
-                <Text key={`${selected?.id ?? 'none'}-${index}`}>{line.trimEnd().replace(/\t/g, '  ')}</Text>
+                <Text key={`${selected?.id ?? 'none'}-${index}`}>
+                  {truncateLine(line.trimEnd().replace(/\t/g, '  '), Math.max(30, rightPaneWidth - 6))}
+                </Text>
               ))}
               <Box marginTop={1}>
                 {selected ? (
