@@ -26,27 +26,36 @@ export ANTHROPIC_MODEL="kwaipilot-default"
 export ANTHROPIC_AUTH_TOKEN="Test" ANTHROPIC_BASE_URL="http://localhost:3000" ANTHROPIC_DEFAULT_HAIKU_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_OPUS_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_SONNET_MODEL="kwaipilot-default" ANTHROPIC_MODEL="kwaipilot-default"
 ```
 
-### 配置文件方式（推荐）
-
-将环境变量写入 `.env` 文件，启动时通过 `--config` 指定。配置会加载到 `process.env`，并**显式传给 Claude Code 子进程**（SDK `query()` 的 `options.env`）：
+### 全局配置（推荐，无需每次加 --config）
 
 ```bash
-# 1. 创建配置文件（如 leslie.kwaipilot.env）
-cat > leslie.kwaipilot.env << 'EOF'
-ANTHROPIC_AUTH_TOKEN=Test
-ANTHROPIC_BASE_URL=http://localhost:3000
-ANTHROPIC_DEFAULT_HAIKU_MODEL=kwaipilot-default
-ANTHROPIC_DEFAULT_OPUS_MODEL=kwaipilot-default
-ANTHROPIC_DEFAULT_SONNET_MODEL=kwaipilot-default
-ANTHROPIC_MODEL=kwaipilot-default
-EOF
+# 1. 先 export 环境变量
+export ANTHROPIC_AUTH_TOKEN="Test" ANTHROPIC_BASE_URL="http://localhost:3000" \
+  ANTHROPIC_DEFAULT_HAIKU_MODEL="kwaipilot-default" ANTHROPIC_DEFAULT_OPUS_MODEL="kwaipilot-default" \
+  ANTHROPIC_DEFAULT_SONNET_MODEL="kwaipilot-default" ANTHROPIC_MODEL="kwaipilot-default"
 
-# 2. 启动时指定配置
-leslie run --config leslie.kwaipilot.env --title "Your task"
-leslie spawn --config leslie.kwaipilot.env --intent "Your task" --objective <objective-id>
+# 2. 生成 ~/.leslie/env（从当前 env 拷贝）
+leslie config init --from-env
+
+# 3. 之后直接运行，无需 --config
+leslie run --title "Your task"
+leslie spawn --intent "Your task" --objective <objective-id>
 ```
 
-示例文件见仓库根目录 `leslie.kwaipilot.env.example`。
+或使用默认模板（不依赖当前 env）：
+
+```bash
+leslie config init   # 创建 ~/.leslie/env 默认模板，可手动编辑
+```
+
+**加载顺序**：每次运行自动加载 `~/.leslie/env`（存在则加载），`--config` 可覆盖。
+
+### 项目级配置（--config 指定）
+
+```bash
+leslie run --config leslie.kwaipilot.env --title "Your task"
+leslie spawn --config leslie.kwaipilot.env --intent "..." --objective <id>
+```
 
 **实现说明**：CLI 加载配置后，`runAgent` 会将 `process.env` 显式传给 SDK 的 `query(options.env)`，确保 ANTHROPIC_* 等变量到达 Claude Code 子进程。
 

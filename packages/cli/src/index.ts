@@ -1,6 +1,6 @@
 import minimist from 'minimist';
 import { LeslieCore, isLeslieError } from '@vibe-x-ai/leslie-core';
-import { loadEnvConfig } from './config/env-loader.js';
+import { getGlobalConfigPath, loadEnvConfig } from './config/env-loader.js';
 import { formatJson } from './formatters/json.js';
 import { formatTable } from './formatters/table.js';
 import { formatYaml } from './formatters/yaml.js';
@@ -16,6 +16,7 @@ import { runSpawn } from './commands/spawn.js';
 import { runStatus } from './commands/status.js';
 import { runTransfer } from './commands/transfer.js';
 import { runTranscript } from './commands/transcript.js';
+import { runConfigInit } from './commands/config/init.js';
 import { runObjectiveCreate } from './commands/objective/create.js';
 import { runObjectiveList } from './commands/objective/list.js';
 import { runObjectiveStatus } from './commands/objective/status.js';
@@ -38,6 +39,7 @@ function showHelp(): void {
     '',
     'Commands:',
     '  init',
+    '  config init [--from-env] [--force]  Create ~/.leslie/env (default env for Claude Code)',
     '  objective create --title <title>',
     '  objective list',
     '  objective status --id <objective-id>',
@@ -54,7 +56,7 @@ function showHelp(): void {
     '  transcript --thread <thread-id> --chat <chat-id> --query <text> --assistant <text>',
     '',
     'Global flags:',
-    '  --config, -c <path>  Load env from .env file before running',
+    '  --config, -c <path>  Override env (default: ~/.leslie/env)',
     '  --format json|table|yaml (default json)',
     '  --debug',
     '  --help',
@@ -76,6 +78,9 @@ export async function runCli(argv: string[]): Promise<void> {
     return;
   }
 
+  // 1. 默认加载 ~/.leslie/env（存在则加载）
+  loadEnvConfig(getGlobalConfigPath(), false);
+  // 2. --config 覆盖
   const configPath = flags.config ?? flags.c;
   if (typeof configPath === 'string' && configPath.length > 0) {
     loadEnvConfig(configPath);
@@ -88,11 +93,16 @@ export async function runCli(argv: string[]): Promise<void> {
   });
 
   try {
-    await core.initProject();
+    const isConfigInit = command === 'config' && subcommand === 'init';
+    if (!isConfigInit) {
+      await core.initProject();
+    }
 
     let response: unknown;
     if (command === 'init') {
       response = await runInit(core, flags);
+    } else if (isConfigInit) {
+      response = await runConfigInit(core, flags);
     } else if (command === 'spawn') {
       response = await runSpawn(core, flags);
     } else if (command === 'run') {
