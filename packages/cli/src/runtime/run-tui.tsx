@@ -524,47 +524,12 @@ function TuiApp({ store }: { store: TuiStore }) {
 
   return (
     <Box flexDirection="column" paddingX={1} height={dashboardHeight}>
-      <Box
-        flexDirection="column"
-        borderStyle="round"
-        borderColor="cyan"
-        paddingX={1}
-        marginBottom={1}
-      >
-        <Text color="cyanBright">Leslie Run Dashboard</Text>
+      <Box flexDirection="column" marginBottom={1}>
         <Text>
-          objective: <Text color="cyan">{state.objectiveId}</Text>
+          <Text color="cyanBright" bold>Leslie</Text> <Text color="gray">|</Text> Obj: <Text color="cyan">{state.objectiveId}</Text> <Text color="gray">|</Text> <Text color="white">{truncateLine(state.title, 80)}</Text>
         </Text>
         <Text>
-          title: <Text color="white">{truncateLine(state.title, 120)}</Text>
-        </Text>
-        <Text>
-          filter: <Text color={state.filterMode === 'all' ? 'blue' : 'green'}>{state.filterMode}</Text> | threads:
-          total=<Text color="cyan">{String(statusCount.total)}</Text> running=
-          <Text color="green">{String(statusCount.active)}</Text> suspended=
-          <Text color="yellow">{String(statusCount.suspended)}</Text> done=
-          <Text color="blue">{String(statusCount.completed)}</Text>
-          {statusCount.other > 0 ? (
-            <Text>
-              {' '}
-              other=<Text color="gray">{String(statusCount.other)}</Text>
-            </Text>
-          ) : null}
-        </Text>
-        <Text>
-          tab: <Text color={state.activeTab === 'detail' ? 'green' : 'blue'}>{state.activeTab}</Text> | viewport:
-          <Text color="cyan"> {columns}x{rows}</Text>
-        </Text>
-        <Text>
-          selected: <Text color="cyan">{selected?.id ?? '-'}</Text> | status=
-          <Text color={threadStatusColor(selected?.status ?? '')}>{selected ? formatThreadStatus(selected.status) : '-'}</Text> | parent=
-          <Text color="gray">{selected?.parentId ?? '-'}</Text> | children=
-          <Text color="cyan">{String(selected?.children.length ?? 0)}</Text> | refs_to=
-          <Text color="cyan">{String(selected?.referencesTo.length ?? 0)}</Text> | referenced_by=
-          <Text color="cyan">{String(selected?.referencedBy.length ?? 0)}</Text>
-        </Text>
-        <Text color="gray">
-          keys: ↑/↓ select thread | tab/t switch pane | d/r/g jump pane | f filter | j/k scroll | ? help
+          <Text color="gray">Threads:</Text> {statusCount.total} total (<Text color="green">{statusCount.active}</Text> running, <Text color="blue">{statusCount.completed}</Text> done) <Text color="gray">|</Text> <Text color="gray">Filter:</Text> <Text color="cyan">{state.filterMode}</Text> <Text color="gray">|</Text> <Text color="gray">Tab:</Text> <Text color="cyan">{state.activeTab}</Text>
         </Text>
       </Box>
       {state.showHelp ? (
@@ -590,31 +555,24 @@ function TuiApp({ store }: { store: TuiStore }) {
           width={leftPaneWidth}
           flexDirection="column"
           marginRight={1}
-          borderStyle="round"
-          borderColor="magenta"
+          borderStyle="single"
+          borderColor="gray"
           paddingX={1}
         >
-          <Text color="magentaBright">Threads</Text>
-          <Text color="gray">filter={state.filterMode} | selected={state.selectedThreadId ?? '-'}</Text>
           {leftRows.map((thread) => {
-            const selectedMark = thread.id === state.selectedThreadId ? '>' : ' ';
+            const isSelected = thread.id === state.selectedThreadId;
             const runningMark = thread.status === 'active' ? spinner : ' ';
+            const color = isSelected ? 'cyanBright' : 'white';
             return (
               <Box key={thread.id} flexDirection="column" marginTop={1}>
-                <Text>
-                  <Text color={thread.id === state.selectedThreadId ? 'cyanBright' : 'gray'}>{selectedMark}</Text>{' '}
+                <Text color={color} bold={isSelected}>
+                  {isSelected ? '▶ ' : '  '}
                   <Text color={threadStatusColor(thread.status)}>[{formatThreadStatus(thread.status)}]</Text> {thread.id}{' '}
                   <Text color={thread.status === 'active' ? 'green' : 'gray'}>{runningMark}</Text>
                 </Text>
-                <Text color="gray">
-                  {'  '}
-                  parent={thread.parentId ?? '-'} | children={thread.children.length} | refs_to={thread.referencesTo.length} |
-                  referenced_by={thread.referencedBy.length}
-                </Text>
-                <Text color="gray">
-                  {'  '}
-                  last={truncateLine(thread.lastLine || '(no updates yet)', Math.max(24, leftPaneWidth - 10))} | updated{' '}
-                  {ageLabel(thread.updatedAt, now)} ago
+                <Text color={isSelected ? 'cyan' : 'gray'}>
+                  {'    '}
+                  {truncateLine(thread.lastLine || '(no updates yet)', Math.max(24, leftPaneWidth - 10))}
                 </Text>
               </Box>
             );
@@ -630,86 +588,79 @@ function TuiApp({ store }: { store: TuiStore }) {
           flexDirection="column"
           flexGrow={1}
           width={rightPaneWidth}
-          borderStyle="round"
-          borderColor="blue"
+          borderStyle="single"
+          borderColor="gray"
           paddingX={1}
         >
-          <Text color="blueBright">
+          <Text color="white" bold>
             {state.activeTab === 'detail'
               ? `Thread Detail (${selected?.id ?? 'none'})`
               : state.activeTab === 'runtime'
                 ? `Thread Runtime (${selected?.id ?? 'none'})`
                 : 'Global Relation Graph'}
           </Text>
+          <Text color="gray">{'─'.repeat(rightPaneWidth - 4)}</Text>
           {state.activeTab === 'detail' ? (
             <>
-              <Box flexDirection="column" marginBottom={1}>
-                <Text color="gray">all fields of selected thread</Text>
-                <Text color="gray">----------------------------------------</Text>
-              </Box>
               {detailPageLines.map((line, index) => (
                 <Text key={`detail-${index}`}>{truncateLine(line, Math.max(30, rightPaneWidth - 6))}</Text>
               ))}
-              <Text color="gray">
-                detail window: {detailLines.length === 0 ? 0 : detailStart + 1}-{detailEnd} / {detailLines.length}
-              </Text>
+              <Box marginTop={1}>
+                <Text color="gray">
+                  detail window: {detailLines.length === 0 ? 0 : detailStart + 1}-{detailEnd} / {detailLines.length}
+                </Text>
+              </Box>
             </>
           ) : state.activeTab === 'global' ? (
             <>
-              <Box flexDirection="column" marginBottom={1}>
-                <Text color="gray">scope: current objective | formatted graph + runtime feed</Text>
-                <Text color="gray">----------------------------------------</Text>
-              </Box>
               {globalPageLines.map((line, index) => (
                 <Text key={`global-${index}`}>{truncateLine(line, Math.max(30, rightPaneWidth - 6))}</Text>
               ))}
-              <Text color="gray">
-                global window: {globalLines.length === 0 ? 0 : globalStart + 1}-{globalEnd} / {globalLines.length}
-              </Text>
+              <Box marginTop={1}>
+                <Text color="gray">
+                  global window: {globalLines.length === 0 ? 0 : globalStart + 1}-{globalEnd} / {globalLines.length}
+                </Text>
+              </Box>
             </>
           ) : (
             <>
-              {selected ? (
-                <Box flexDirection="column" marginBottom={1}>
-                  <Text color="gray">parent: {selected.parentId ?? '-'}</Text>
-                  <Text color="gray">children: {selected.children.join(', ') || '-'}</Text>
-                  <Text color="gray">refs_to: {selected.referencesTo.join(', ') || '-'}</Text>
-                  <Text color="gray">referenced_by: {selected.referencedBy.join(', ') || '-'}</Text>
-                  <Text color="gray">----------------------------------------</Text>
-                </Box>
-              ) : null}
               {pageLines.map((line, index) => (
                 <Text key={`${selected?.id ?? 'none'}-${index}`}>{truncateLine(line, Math.max(30, rightPaneWidth - 6))}</Text>
               ))}
-              {selected ? (
-                <Text color="gray">
-                  log window: {selectedLines.length === 0 ? 0 : start + 1}-{end} / {selectedLines.length}
-                </Text>
-              ) : null}
-              {!selected ? <Text color="gray">Select a thread to view runtime.</Text> : null}
+              <Box marginTop={1}>
+                {selected ? (
+                  <Text color="gray">
+                    log window: {selectedLines.length === 0 ? 0 : start + 1}-{end} / {selectedLines.length}
+                  </Text>
+                ) : (
+                  <Text color="gray">Select a thread to view runtime.</Text>
+                )}
+              </Box>
             </>
           )}
         </Box>
       </Box>
-      {pendingApproval ? (
-        <Box
-          marginTop={1}
-          flexDirection="column"
-          borderStyle="round"
-          borderColor="yellow"
-          paddingX={1}
-        >
-          <Text>
-            <Text color="yellowBright">Approval needed:</Text> [{pendingApproval.threadId}] {pendingApproval.toolName}
+      <Box marginTop={1} flexDirection="column">
+        {pendingApproval ? (
+          <Box flexDirection="column" borderStyle="single" borderColor="yellow" paddingX={1} marginBottom={1}>
+            <Text>
+              <Text color="yellowBright" bold>Approval needed:</Text> [{pendingApproval.threadId}] {pendingApproval.toolName}
+            </Text>
+            <Text>{pendingApproval.inputPreview}</Text>
+            <Text color="yellow">Press y to allow, n to deny</Text>
+          </Box>
+        ) : null}
+        <Box>
+          <Text color="black" backgroundColor="white">
+            {' [↑/↓] Select '}
+            {' [T] Switch Tab '}
+            {' [D/R/G] Jump Tab '}
+            {' [F] Filter '}
+            {' [J/K] Scroll '}
+            {' [?] Help '}
           </Text>
-          <Text>{pendingApproval.inputPreview}</Text>
-          <Text color="yellow">Press y to allow, n to deny</Text>
         </Box>
-      ) : (
-        <Box marginTop={1} borderStyle="round" borderColor="gray" paddingX={1}>
-          <Text color="gray">Waiting for events...</Text>
-        </Box>
-      )}
+      </Box>
     </Box>
   );
 }
