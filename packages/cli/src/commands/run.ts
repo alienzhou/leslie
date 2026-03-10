@@ -94,6 +94,24 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
     eventsOffset = content.length;
     const lines = delta.split('\n').filter(Boolean);
 
+    const safeGetThread = async (threadId: string) => {
+      try {
+        return await core.getThread(threadId);
+      } catch (error) {
+        const code =
+          typeof error === 'object' && error !== null && 'code' in error
+            ? String((error as { code?: unknown }).code ?? '')
+            : '';
+        if (code === 'T101') {
+          if (shouldPrintEventLogs) {
+            stderr.write(`[thread:${threadId}] skipped stale event (thread not found)\n`);
+          }
+          return null;
+        }
+        throw error;
+      }
+    };
+
     for (const line of lines) {
       let event: Record<string, unknown>;
       try {
@@ -130,12 +148,18 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
           stderr.write(`[thread:${threadId}] exited (${success ? 'success' : 'error'})\n`);
         }
         if (!success) {
-          const thread = await core.getThread(threadId);
+          const thread = await safeGetThread(threadId);
+          if (!thread) {
+            continue;
+          }
           if (!isTerminated(thread.status)) {
             await core.lifecycle(threadId, 'cancel', 'Worker exited with error');
           }
         }
-        const thread = await core.getThread(threadId);
+        const thread = await safeGetThread(threadId);
+        if (!thread) {
+          continue;
+        }
         ui?.updateThread({
           id: threadId,
           status: thread.status,
