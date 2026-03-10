@@ -246,6 +246,28 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
             referencedBy: relationsSnapshot[thread.id]?.referenced_by ?? [],
           })),
         );
+        // 兜底：如果有 active 线程尚未启动 worker（例如外部变更 relations 文件后），自动拉起执行。
+        const activeThreads = threads.filter((thread) => thread.status === 'active');
+        for (const thread of activeThreads) {
+          if (activeWorkers.has(thread.id)) {
+            continue;
+          }
+          await startThreadWorker({
+            threadId: thread.id,
+            runtimeDir,
+            source: 'spawn',
+          });
+          activeWorkers.add(thread.id);
+          if (shouldPrintEventLogs) {
+            stderr.write(`[spawn] thread ${thread.id} started from scheduler\n`);
+          }
+          ui?.updateThread({
+            id: thread.id,
+            status: 'active',
+            appendLine: 'started by scheduler',
+          });
+        }
+
         const suspended = threads.filter((thread) => thread.status === 'suspended');
 
         for (const thread of suspended) {
