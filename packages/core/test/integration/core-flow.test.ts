@@ -114,4 +114,53 @@ describe('core integration flow', () => {
     expect(thread.status).toBe('suspended');
     expect(thread.session_id).toBe('session-test');
   });
+
+  it('keeps objective active when out-of-band child thread is still active', async () => {
+    const { core, workspaceRoot } = await createCore();
+    const objective = await core.createObjective('Build API');
+    const parent = await core.spawnThread({
+      intent: 'Parent task',
+      objective: objective.objectiveId,
+      inherit: 'none',
+    });
+
+    const relationsPath = path.join(workspaceRoot, '.leslie', 'thread_relations.json');
+    const relationsRaw = await fs.readFile(relationsPath, 'utf-8');
+    const relationsData = JSON.parse(relationsRaw) as {
+      threads: Record<string, Record<string, unknown>>;
+      relations: Record<string, { children: string[]; references_to: string[]; referenced_by: string[]; depends_on: string[] }>;
+      metadata: { thread_count?: number };
+    };
+
+    const childId = `${parent.result.thread_id}-manual-child`;
+    const now = new Date().toISOString();
+    relationsData.threads[childId] = {
+      id: childId,
+      title: 'Manual child',
+      objective: objective.objectiveId,
+      created_at: now,
+      status: 'active',
+      parent_id: parent.result.thread_id,
+      storage_path: `.leslie/threads/${childId}`,
+      executor: 'agent',
+      updated_at: now,
+    };
+    relationsData.relations[childId] = {
+      children: [],
+      references_to: [],
+      referenced_by: [],
+      depends_on: [parent.result.thread_id],
+    };
+    relationsData.relations[parent.result.thread_id]?.children.push(childId);
+    relationsData.metadata.thread_count = Object.keys(relationsData.threads).length;
+    await fs.writeFile(relationsPath, `${JSON.stringify(relationsData, null, 2)}\n`, 'utf-8');
+
+    await core.lifecycle(parent.result.thread_id, 'done', 'parent done');
+    const statusWhileChildActive = await core.getObjective(objective.objectiveId);
+    expect(statusWhileChildActive.status).toBe('active');
+
+    await core.lifecycle(childId, 'done', 'child done');
+    const statusAfterChildDone = await core.getObjective(objective.objectiveId);
+    expect(statusAfterChildDone.status).toBe('completed');
+  });
 });

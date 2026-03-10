@@ -78,9 +78,19 @@ export class ObjectiveManager {
         });
       }
 
+      const relationThreadIds = Object.values(relations.threads)
+        .filter((thread) => thread.objective === objectiveId)
+        .map((thread) => thread.id)
+        .sort((a, b) => a.localeCompare(b));
+
+      const effectiveThreadIds = relationThreadIds.length > 0 ? relationThreadIds : objective.thread_ids;
+      if (relationThreadIds.length > 0) {
+        objective.thread_ids = relationThreadIds;
+      }
+
       const allTerminated =
-        objective.thread_ids.length > 0 &&
-        objective.thread_ids.every((threadId) => {
+        effectiveThreadIds.length > 0 &&
+        effectiveThreadIds.every((threadId) => {
           const thread = relations.threads[threadId];
           return thread ? TERMINATED_THREAD_STATUS.has(thread.status) : true;
         });
