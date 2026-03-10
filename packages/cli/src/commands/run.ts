@@ -9,6 +9,7 @@ import { buildRuntimeDir, ensureRuntimeDirs, getRuntimePaths, LESLIE_RUNTIME_DIR
 import { createRunTui, type RunTui } from '../runtime/run-tui.js';
 
 const TERMINATED_STATUS = new Set(['completed', 'cancelled', 'archived']);
+const SCHEDULER_POLL_INTERVAL_MS = 2000;
 
 function isTerminated(status: string): boolean {
   return TERMINATED_STATUS.has(status);
@@ -85,7 +86,16 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
   };
 
   const processEvents = async () => {
-    const content = await fs.readFile(runtimePaths.eventsLogPath, 'utf-8');
+    let content: string;
+    try {
+      content = await fs.readFile(runtimePaths.eventsLogPath, 'utf-8');
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code ?? '') : '';
+      if (code === 'ENOENT') {
+        return;
+      }
+      throw error;
+    }
     if (eventsOffset >= content.length) {
       return;
     }
@@ -184,9 +194,21 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
     }
     approvalQueueRunning = true;
     try {
-      const files = (await fs.readdir(runtimePaths.requestsDir))
-        .filter((file) => file.endsWith('.json'))
-        .sort((a, b) => a.localeCompare(b));
+      let files: string[] = [];
+      try {
+        files = (await fs.readdir(runtimePaths.requestsDir))
+          .filter((file) => file.endsWith('.json'))
+          .sort((a, b) => a.localeCompare(b));
+      } catch (error) {
+        const code =
+          typeof error === 'object' && error !== null && 'code' in error
+            ? String((error as { code?: unknown }).code ?? '')
+            : '';
+        if (code === 'ENOENT') {
+          return;
+        }
+        throw error;
+      }
 
       for (const fileName of files) {
         if (handledApprovalRequests.has(fileName)) {
@@ -354,6 +376,14 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
     void processEvents();
   });
   closeWatchers.push(() => eventsWatcher.close());
+
+  // fs.watch 在高频文件写入下可能丢事件，轮询作为调度兜底确保状态可收敛。
+  const schedulerPoller = setInterval(() => {
+    void processEvents();
+    void processApprovalRequests();
+    void checkAndResumeSuspendedParents();
+  }, SCHEDULER_POLL_INTERVAL_MS);
+  closeWatchers.push(() => clearInterval(schedulerPoller));
 
   // 启动后先消费一次当前事件和审批，避免错过首批数据
   await processEvents();
