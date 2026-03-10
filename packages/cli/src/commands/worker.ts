@@ -189,6 +189,7 @@ export async function runWorker(core: LeslieCore, flags: Record<string, unknown>
     const agentResult = await core.runAgent(threadId, {
       canUseTool,
       onMessage,
+      env: process.env as Record<string, string | undefined>,
     });
 
     if (runtimeDir) {

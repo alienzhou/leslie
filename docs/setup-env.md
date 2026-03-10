@@ -28,7 +28,7 @@ export ANTHROPIC_AUTH_TOKEN="Test" ANTHROPIC_BASE_URL="http://localhost:3000" AN
 
 ### 配置文件方式（推荐）
 
-将环境变量写入 `.env` 文件，启动时通过 `--config` 指定：
+将环境变量写入 `.env` 文件，启动时通过 `--config` 指定。配置会加载到 `process.env`，并**显式传给 Claude Code 子进程**（SDK `query()` 的 `options.env`）：
 
 ```bash
 # 1. 创建配置文件（如 leslie.kwaipilot.env）
@@ -47,6 +47,8 @@ leslie spawn --config leslie.kwaipilot.env --intent "Your task" --objective <obj
 ```
 
 示例文件见仓库根目录 `leslie.kwaipilot.env.example`。
+
+**实现说明**：CLI 加载配置后，`runAgent` 会将 `process.env` 显式传给 SDK 的 `query(options.env)`，确保 ANTHROPIC_* 等变量到达 Claude Code 子进程。
 
 ### 前置执行（单次会话）
 

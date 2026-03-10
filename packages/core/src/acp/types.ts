@@ -52,6 +52,8 @@ export interface AgentRunOptions {
   abortController?: AbortController;
   /** 最大预算（USD） */
   maxBudgetUsd?: number;
+  /** 传给 Claude Code 子进程的环境变量，默认用 process.env */
+  env?: Record<string, string | undefined>;
 }
 
 /**

@@ -24,6 +24,7 @@ export class AgentRunner {
       resumeSessionId,
       abortController = new AbortController(),
       maxBudgetUsd,
+      env,
     } = options;
 
     let sessionId = '';
@@ -44,6 +45,7 @@ export class AgentRunner {
         abortController,
         resume: resumeSessionId,
         maxBudgetUsd,
+        env: env ?? process.env,
         canUseTool: canUseToolFn
           ? async (toolName, input) => {
               const result = await canUseToolFn(toolName, input as Record<string, unknown>);
