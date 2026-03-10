@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 interface ParsedOutput {
   success: boolean;
-  data?: Record<string, unknown>;
+  data?: unknown;
   error?: { code: string; message: string };
 }
 
@@ -30,10 +30,10 @@ function runCli(cwd: string, args: string[]) {
 }
 
 function dataValue(parsed: ParsedOutput | null, key: string): unknown {
-  if (!parsed?.data) {
+  if (!parsed?.data || typeof parsed.data !== 'object' || Array.isArray(parsed.data)) {
     throw new Error(`Missing data in CLI response for key ${key}`);
   }
-  return parsed.data[key];
+  return (parsed.data as Record<string, unknown>)[key];
 }
 
 describe('cli e2e', () => {
@@ -104,5 +104,74 @@ describe('cli e2e', () => {
     const circular = runCli(workspace, ['reference', '--from', bId, '--target', aId]);
     expect(circular.code).toBe(1);
     expect(circular.parsed?.error?.code).toBe('T201');
+  });
+
+  it('keeps thread graph consistent after rapid child spawns', async () => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'leslie-cli-e2e-'));
+    const init = runCli(workspace, ['init', '--yes']);
+    expect(init.code).toBe(0);
+
+    const objective = runCli(workspace, ['objective', 'create', '--title', 'Graph consistency']);
+    expect(objective.code).toBe(0);
+    const objectiveId = dataValue(objective.parsed, 'objectiveId') as string;
+
+    const root = runCli(workspace, [
+      'spawn',
+      '--intent',
+      'Root planner',
+      '--objective',
+      objectiveId,
+      '--no-run',
+    ]);
+    expect(root.code).toBe(0);
+    const rootId = dataValue(root.parsed, 'thread_id') as string;
+
+    const childIntents = ['Child A', 'Child B', 'Child C', 'Child D'];
+    const childIds: string[] = [];
+
+    for (const intent of childIntents) {
+      const spawned = runCli(workspace, [
+        'spawn',
+        '--intent',
+        intent,
+        '--objective',
+        objectiveId,
+        '--parent',
+        rootId,
+        '--no-run',
+      ]);
+      expect(spawned.code).toBe(0);
+      const childId = dataValue(spawned.parsed, 'thread_id') as string;
+      childIds.push(childId);
+
+      const ref = runCli(workspace, ['reference', '--from', childId, '--target', rootId]);
+      expect(ref.code).toBe(0);
+    }
+
+    const listed = runCli(workspace, ['list']);
+    expect(listed.code).toBe(0);
+    expect(Array.isArray(listed.parsed?.data)).toBe(true);
+
+    const objectiveThreads = (listed.parsed?.data as Array<Record<string, unknown>>).filter(
+      (thread) => thread.objective === objectiveId,
+    );
+    expect(objectiveThreads).toHaveLength(5);
+
+    const relationsPath = path.join(workspace, '.leslie', 'thread_relations.json');
+    const relationsRaw = await fs.readFile(relationsPath, 'utf-8');
+    const relations = JSON.parse(relationsRaw) as {
+      metadata: { thread_count: number };
+      threads: Record<string, { parent_id: string | null; objective: string }>;
+      relations: Record<string, { children: string[]; references_to: string[] }>;
+    };
+
+    expect(relations.metadata.thread_count).toBe(5);
+    expect(relations.relations[rootId]?.children.slice().sort()).toEqual(childIds.slice().sort());
+
+    for (const childId of childIds) {
+      expect(relations.threads[childId]?.parent_id).toBe(rootId);
+      expect(relations.threads[childId]?.objective).toBe(objectiveId);
+      expect(relations.relations[childId]?.references_to).toContain(rootId);
+    }
   });
 });

@@ -44,6 +44,7 @@ class TuiStore {
   private state: UiState;
 
   private static readonly GLOBAL_LOG_MAX_LINES = 500;
+  private static readonly THREAD_LOG_MAX_LINES = 500;
 
   public constructor(title: string, objectiveId: string, cwd: string) {
     this.state = {
@@ -93,7 +94,7 @@ class TuiStore {
       updatedAt: Date.now(),
     };
     const nextLines = input.appendLine
-      ? [...current.lines.slice(-79), input.appendLine]
+      ? [...current.lines.slice(-(TuiStore.THREAD_LOG_MAX_LINES - 1)), input.appendLine]
       : current.lines;
     if (input.appendLine) {
       const globalLine = `[${input.id}] ${input.appendLine}`;
@@ -466,6 +467,7 @@ function TuiApp({ store }: { store: TuiStore }) {
     if (!selected) {
       return ['Select a thread to inspect details.'];
     }
+    const messageLines = selected.lines.length > 0 ? selected.lines : ['(no captured messages yet)'];
     return [
       `id: ${selected.id}`,
       `status: ${formatThreadStatus(selected.status)}`,
@@ -475,6 +477,9 @@ function TuiApp({ store }: { store: TuiStore }) {
       `referenced_by (${selected.referencedBy.length}): ${selected.referencedBy.join(', ') || '-'}`,
       `last update: ${ageLabel(selected.updatedAt, now)} ago`,
       `last message: ${selected.lastLine || '(no updates yet)'}`,
+      '',
+      'captured messages:',
+      ...messageLines.map((line) => `- ${line}`),
     ];
   }, [selected, now]);
   const detailWindowSize = Math.max(6, bodyHeight - 8);

@@ -143,6 +143,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         ui?.updateThread({
           id: threadId,
           status: 'active',
+          appendLine: '[system] thread started',
         });
       } else if (eventType === 'assistant_text') {
         if (shouldPrintEventLogs) {
@@ -175,6 +176,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         ui?.updateThread({
           id: threadId,
           status: thread.status,
+          appendLine: `[system] worker exited (${success ? 'success' : 'error'})`,
         });
       } else if (eventType === 'tool_request') {
         if (shouldPrintEventLogs) {
@@ -183,6 +185,16 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         ui?.updateThread({
           id: threadId,
           appendLine: `tool request: ${String(event.toolName ?? '')}`,
+        });
+      } else if (eventType === 'tool_decision') {
+        const behavior = String(event.behavior ?? '');
+        const toolName = String(event.toolName ?? '');
+        if (shouldPrintEventLogs) {
+          stderr.write(`[thread:${threadId}] tool decision ${toolName} -> ${behavior}\n`);
+        }
+        ui?.updateThread({
+          id: threadId,
+          appendLine: `tool decision: ${toolName} -> ${behavior}`,
         });
       }
     }
