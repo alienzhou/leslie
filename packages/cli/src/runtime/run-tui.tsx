@@ -635,7 +635,7 @@ function TuiApp({ store }: { store: TuiStore }) {
           ) : (
             <>
               {pageLines.map((line, index) => (
-                <Text key={`${selected?.id ?? 'none'}-${index}`}>{truncateLine(line, Math.max(30, rightPaneWidth - 6))}</Text>
+                <Text key={`${selected?.id ?? 'none'}-${index}`}>{truncateLine(line, Infinity)}</Text>
               ))}
               <Box marginTop={1}>
                 {selected ? (
