@@ -10,12 +10,25 @@ export const threadStatusSchema = z.enum([
   'waiting_human',
 ]);
 
+const persistedThreadStatusSchema = z
+  .enum([
+    'active',
+    'suspended',
+    'completed',
+    'cancelled',
+    'archived',
+    'frozen',
+    'waiting_human',
+    'pending',
+  ])
+  .transform((status) => (status === 'pending' ? 'active' : status));
+
 export const threadInfoSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   objective: z.string().min(1),
   created_at: z.string().datetime(),
-  status: threadStatusSchema,
+  status: persistedThreadStatusSchema,
   tags: z.array(z.string()).optional(),
   parent_id: z.string().nullable(),
   storage_path: z.string().min(1),

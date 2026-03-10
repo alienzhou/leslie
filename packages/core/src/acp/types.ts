@@ -46,6 +46,8 @@ export interface AgentRunOptions {
   canUseTool?: CanUseToolFn;
   /** 消息输出回调 */
   onMessage?: OnMessageFn;
+  /** 原始 SDKMessage 回调，用于调试/日志记录（如 LESLIE_LOG_SDK=1 时写入文件） */
+  onSdkMessage?: (msg: unknown) => void | Promise<void>;
   /** 恢复已有 session */
   resumeSessionId?: string;
   /** 用于取消的 AbortController */

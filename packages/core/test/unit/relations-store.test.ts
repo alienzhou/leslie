@@ -47,4 +47,53 @@ describe('relations-store', () => {
     const recovered = await store.read();
     expect(recovered.version).toBe('1.0');
   });
+
+  it('normalizes legacy pending status to active', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'leslie-relations-'));
+    const filePath = path.join(root, '.leslie', 'thread_relations.json');
+    const store = new RelationsStore({ relationsFilePath: filePath });
+    await store.ensureFileExists();
+
+    const now = new Date().toISOString();
+    await fs.writeFile(
+      filePath,
+      `${JSON.stringify(
+        {
+          version: '1.0',
+          metadata: {
+            last_updated: now,
+            thread_count: 1,
+          },
+          threads: {
+            'thread-legacy': {
+              id: 'thread-legacy',
+              title: 'legacy',
+              objective: 'obj-legacy',
+              created_at: now,
+              status: 'pending',
+              parent_id: null,
+              storage_path: '.leslie/threads/thread-legacy',
+              executor: 'agent',
+              updated_at: now,
+            },
+          },
+          operations: [],
+          relations: {
+            'thread-legacy': {
+              children: [],
+              references_to: [],
+              referenced_by: [],
+              depends_on: [],
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      'utf-8',
+    );
+
+    const data = await store.read();
+    expect(data.threads['thread-legacy']?.status).toBe('active');
+  });
 });

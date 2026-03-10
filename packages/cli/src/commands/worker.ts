@@ -5,6 +5,7 @@ import type { LeslieCore, CanUseToolFn, PermissionResult, AgentMessage } from '@
 import { createInteractivePermissionHandler } from '../agent/permission-prompt.js';
 import { decideToolPermission, loadPermissionPolicy } from '../agent/permission-policy.js';
 import { createOutputRenderer } from '../agent/output-renderer.js';
+import { createSdkMessageLogger } from '../agent/sdk-logger.js';
 import { requiredString } from '../utils.js';
 import {
   LESLIE_RUNTIME_DIR_ENV,
@@ -189,6 +190,7 @@ export async function runWorker(core: LeslieCore, flags: Record<string, unknown>
     const agentResult = await core.runAgent(threadId, {
       canUseTool,
       onMessage,
+      onSdkMessage: createSdkMessageLogger(workspaceRoot, threadId),
       env: process.env as Record<string, string | undefined>,
     });
 

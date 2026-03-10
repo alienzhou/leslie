@@ -86,6 +86,13 @@ export ANTHROPIC_MODEL="kwaipilot-default"
 EOF
 ```
 
+### 调试相关
+
+| 变量 | 说明 |
+|------|------|
+| `LESLIE_LOG_SDK=1` | 将 Claude Code 运行时的原始 SDKMessage 流写入 `.leslie/logs/sdk/{threadId}.ndjson`，用于调试 |
+| `LESLIE_DEBUG=1` | 启用 debug 日志级别（若已接入 logger） |
+
 ### 变量说明
 
 | 变量 | 说明 |

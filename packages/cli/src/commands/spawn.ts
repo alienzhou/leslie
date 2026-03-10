@@ -2,6 +2,7 @@ import type { LeslieCore } from '@vibe-x-ai/leslie-core';
 import path from 'node:path';
 import { createInteractivePermissionHandler } from '../agent/permission-prompt.js';
 import { createOutputRenderer } from '../agent/output-renderer.js';
+import { createSdkMessageLogger } from '../agent/sdk-logger.js';
 import { splitComma, requiredString } from '../utils.js';
 import { LESLIE_RUNTIME_DIR_ENV, startThreadWorker } from '../runtime/agent-runtime.js';
 
@@ -73,6 +74,7 @@ export async function runSpawn(core: LeslieCore, flags: Record<string, unknown>)
   const agentResult = await core.runAgent(threadId, {
     canUseTool: createInteractivePermissionHandler(core.workspaceRoot),
     onMessage: createOutputRenderer(),
+    onSdkMessage: createSdkMessageLogger(core.workspaceRoot, threadId),
     env: process.env as Record<string, string | undefined>,
   });
 

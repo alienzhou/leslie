@@ -21,6 +21,7 @@ export class AgentRunner {
       permissionMode = 'default',
       canUseTool: canUseToolFn,
       onMessage,
+      onSdkMessage,
       resumeSessionId,
       abortController = new AbortController(),
       maxBudgetUsd,
@@ -60,6 +61,8 @@ export class AgentRunner {
 
     try {
       for await (const msg of q) {
+        await onSdkMessage?.(msg);
+
         if (!sessionId) {
           sessionId = extractSessionId(msg);
         }
