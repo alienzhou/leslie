@@ -19,6 +19,11 @@ interface CompiledPermissionPolicy {
   bashConfirm: RegExp[];
 }
 
+const PROTECTED_CONTROL_FILES = new Set([
+  path.posix.normalize('.leslie/thread_relations.json'),
+  path.posix.normalize('.leslie/objectives.json'),
+]);
+
 const DEFAULT_BASH_DENY_PATTERNS = [
   String.raw`\brm\s+-rf\b`,
   String.raw`\bmkfs\b`,
@@ -77,6 +82,52 @@ function mergeConfig(base: RawPermissionConfig, extra: RawPermissionConfig | nul
   };
 }
 
+function normalizeCandidatePath(rawPath: string): string {
+  const normalized = rawPath.replace(/\\/g, '/').trim();
+  const noPrefix = normalized.startsWith('./') ? normalized.slice(2) : normalized;
+  return path.posix.normalize(noPrefix);
+}
+
+function collectPathLikeStrings(input: unknown, acc: string[]): void {
+  if (typeof input === 'string') {
+    if (input.includes('/') || input.includes('\\') || input.includes('.leslie')) {
+      acc.push(input);
+    }
+    return;
+  }
+  if (Array.isArray(input)) {
+    for (const item of input) {
+      collectPathLikeStrings(item, acc);
+    }
+    return;
+  }
+  if (typeof input === 'object' && input !== null) {
+    for (const value of Object.values(input as Record<string, unknown>)) {
+      collectPathLikeStrings(value, acc);
+    }
+  }
+}
+
+function shouldBlockProtectedFileWrite(toolName: string, input: Record<string, unknown>): boolean {
+  const lowerToolName = toolName.toLowerCase();
+  const maybeWriteTool =
+    lowerToolName.includes('write') ||
+    lowerToolName.includes('edit') ||
+    lowerToolName.includes('replace') ||
+    lowerToolName.includes('delete') ||
+    lowerToolName.includes('remove') ||
+    lowerToolName.includes('rename') ||
+    lowerToolName.includes('move');
+
+  if (!maybeWriteTool) {
+    return false;
+  }
+
+  const candidates: string[] = [];
+  collectPathLikeStrings(input, candidates);
+  return candidates.some((raw) => PROTECTED_CONTROL_FILES.has(normalizeCandidatePath(raw)));
+}
+
 export function loadPermissionPolicy(workspaceRoot: string): CompiledPermissionPolicy {
   const repoConfigPath = path.join(workspaceRoot, 'leslie.permissions.json');
   const localConfigPath = path.join(workspaceRoot, '.leslie', 'permissions.json');
@@ -108,6 +159,13 @@ export function decideToolPermission(
   toolName: string,
   input: Record<string, unknown>,
 ): { action: PolicyAction; reason?: string } {
+  if (shouldBlockProtectedFileWrite(toolName, input)) {
+    return {
+      action: 'deny',
+      reason: `Protected Leslie control file can only be modified via Leslie CLI: ${Array.from(PROTECTED_CONTROL_FILES).join(', ')}`,
+    };
+  }
+
   // 仅 Bash 走 deny/confirm 规则；Read/Write/Edit 等一律放行
   if (toolName !== 'Bash') {
     return { action: 'allow' };

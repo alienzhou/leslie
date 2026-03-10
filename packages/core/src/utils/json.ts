@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 export async function ensureDir(dirPath: string): Promise<void> {
   await fs.mkdir(dirPath, { recursive: true });
@@ -22,7 +23,9 @@ export async function readJsonFile<T>(filePath: string): Promise<T> {
 export async function writeJsonFile(filePath: string, data: unknown): Promise<void> {
   await ensureDir(path.dirname(filePath));
   const content = `${JSON.stringify(data, null, 2)}\n`;
-  await fs.writeFile(filePath, content, 'utf-8');
+  const tempPath = `${filePath}.tmp-${process.pid}-${randomUUID()}`;
+  await fs.writeFile(tempPath, content, 'utf-8');
+  await fs.rename(tempPath, filePath);
 }
 
 export async function copyFileIfExists(source: string, destination: string): Promise<boolean> {
