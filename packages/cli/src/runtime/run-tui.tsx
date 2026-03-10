@@ -36,6 +36,8 @@ interface UiState {
   globalScrollOffset: number;
   showHelp: boolean;
   globalLogLines: string[];
+  showGlobalOverlay: boolean;
+  globalOverlayScrollOffset: number;
 }
 
 class TuiStore {
@@ -62,6 +64,8 @@ class TuiStore {
       globalScrollOffset: 0,
       showHelp: false,
       globalLogLines: [],
+      showGlobalOverlay: false,
+      globalOverlayScrollOffset: 0,
     };
   }
 
@@ -271,6 +275,24 @@ class TuiStore {
     this.emit();
   }
 
+  public toggleGlobalOverlay(): void {
+    this.state = {
+      ...this.state,
+      showGlobalOverlay: !this.state.showGlobalOverlay,
+      globalOverlayScrollOffset: this.state.showGlobalOverlay ? 0 : this.state.globalOverlayScrollOffset,
+    };
+    this.emit();
+  }
+
+  public scrollGlobalOverlay(delta: number): void {
+    const nextOffset = Math.max(0, this.state.globalOverlayScrollOffset + delta);
+    if (nextOffset === this.state.globalOverlayScrollOffset) {
+      return;
+    }
+    this.state = { ...this.state, globalOverlayScrollOffset: nextOffset };
+    this.emit();
+  }
+
   private visibleOrder(mode: 'all' | 'active' = this.state.filterMode): string[] {
     if (mode === 'all') {
       return this.state.order;
@@ -374,6 +396,182 @@ function ageLabel(updatedAt: number, now: number): string {
   return `${hour}h`;
 }
 
+function statusIcon(status: string): string {
+  if (status === 'active') return '●';
+  if (status === 'completed') return '✓';
+  if (status === 'suspended') return '◆';
+  if (status === 'cancelled') return '✗';
+  return '○';
+}
+
+function buildRelationTree(threads: ThreadView[]): Array<{ text: string; color?: string }> {
+  const lines: Array<{ text: string; color?: string }> = [];
+  const threadMap = new Map(threads.map((t) => [t.id, t]));
+  const roots = threads.filter((t) => !t.parentId || !threadMap.has(t.parentId));
+
+  function renderNode(thread: ThreadView, prefix: string, isLast: boolean, isRoot: boolean): void {
+    const connector = isRoot ? '' : isLast ? '└── ' : '├── ';
+    const icon = statusIcon(thread.status);
+    const color = threadStatusColor(thread.status);
+    const shortId = thread.id.length > 20 ? thread.id.slice(0, 20) : thread.id;
+    lines.push({
+      text: `${prefix}${connector}${icon} ${shortId}  [${formatThreadStatus(thread.status)}]`,
+      color,
+    });
+    const childPrefix = prefix + (isRoot ? '' : isLast ? '    ' : '│   ');
+    const children = threads.filter((t) => t.parentId === thread.id);
+    for (let i = 0; i < children.length; i++) {
+      renderNode(children[i]!, childPrefix, i === children.length - 1, false);
+    }
+  }
+
+  if (roots.length === 0) {
+    lines.push({ text: '(no threads)', color: 'gray' });
+    return lines;
+  }
+
+  lines.push({ text: '╭─ Thread Hierarchy', color: 'cyan' });
+  lines.push({ text: '│' });
+  for (let i = 0; i < roots.length; i++) {
+    renderNode(roots[i]!, '│  ', i === roots.length - 1, true);
+    if (i < roots.length - 1) {
+      lines.push({ text: '│' });
+    }
+  }
+  lines.push({ text: '│' });
+  lines.push({ text: '╰─' });
+
+  const refs = threads.flatMap((t) =>
+    t.referencesTo.filter((ref) => threadMap.has(ref)).map((ref) => ({ from: t.id, to: ref })),
+  );
+  if (refs.length > 0) {
+    lines.push({ text: '' });
+    lines.push({ text: '╭─ Cross References', color: 'yellow' });
+    lines.push({ text: '│' });
+    for (const r of refs) {
+      const fromShort = r.from.length > 16 ? r.from.slice(0, 16) : r.from;
+      const toShort = r.to.length > 16 ? r.to.slice(0, 16) : r.to;
+      lines.push({ text: `│  ${fromShort}  ───→  ${toShort}`, color: 'yellow' });
+    }
+    lines.push({ text: '│' });
+    lines.push({ text: '╰─' });
+  }
+
+  const orphanRefs = threads.flatMap((t) =>
+    t.referencesTo.filter((ref) => !threadMap.has(ref)).map((ref) => ({ from: t.id, to: ref })),
+  );
+  const externalRefs = threads.flatMap((t) =>
+    t.referencedBy.filter((ref) => !threadMap.has(ref)).map((ref) => ({ from: ref, to: t.id })),
+  );
+  if (orphanRefs.length > 0 || externalRefs.length > 0) {
+    lines.push({ text: '' });
+    lines.push({ text: '╭─ External References', color: 'gray' });
+    lines.push({ text: '│' });
+    for (const r of orphanRefs) {
+      const fromShort = r.from.length > 16 ? r.from.slice(0, 16) : r.from;
+      const toShort = r.to.length > 16 ? r.to.slice(0, 16) : r.to;
+      lines.push({ text: `│  ${fromShort}  ···→  ${toShort} (external)`, color: 'gray' });
+    }
+    for (const r of externalRefs) {
+      const fromShort = r.from.length > 16 ? r.from.slice(0, 16) : r.from;
+      const toShort = r.to.length > 16 ? r.to.slice(0, 16) : r.to;
+      lines.push({ text: `│  ${fromShort}  ···→  ${toShort} (external)`, color: 'gray' });
+    }
+    lines.push({ text: '│' });
+    lines.push({ text: '╰─' });
+  }
+
+  return lines;
+}
+
+function GlobalRelationOverlay({
+  store,
+  threads,
+  viewport,
+}: {
+  store: TuiStore;
+  threads: ThreadView[];
+  viewport: { columns: number; rows: number };
+}) {
+  const state = useStore(store);
+  const treeLines = useMemo(() => buildRelationTree(threads), [threads]);
+
+  useInput((_input, key) => {
+    if (_input === 'G' || key.escape) {
+      store.toggleGlobalOverlay();
+    } else if (_input.toLowerCase() === 'j' || key.downArrow) {
+      store.scrollGlobalOverlay(1);
+    } else if (_input.toLowerCase() === 'k' || key.upArrow) {
+      store.scrollGlobalOverlay(-1);
+    }
+  });
+
+  const cols = viewport.columns;
+  const rows = viewport.rows;
+  const contentHeight = Math.max(6, rows - 8);
+  const maxStart = Math.max(0, treeLines.length - contentHeight);
+  const start = Math.max(0, maxStart - state.globalOverlayScrollOffset);
+  const end = Math.min(treeLines.length, start + contentHeight);
+  const pageLines = treeLines.slice(start, end);
+
+  const statusCounts = threads.reduce(
+    (acc, t) => {
+      if (t.status === 'active') acc.running += 1;
+      else if (t.status === 'completed') acc.done += 1;
+      else if (t.status === 'suspended') acc.suspended += 1;
+      else acc.other += 1;
+      return acc;
+    },
+    { running: 0, done: 0, suspended: 0, other: 0 },
+  );
+
+  return (
+    <Box flexDirection="column" paddingX={2} height={rows}>
+      <Box
+        flexDirection="column"
+        borderStyle="double"
+        borderColor="cyan"
+        paddingX={2}
+        paddingY={1}
+        height={rows - 2}
+      >
+        <Box justifyContent="space-between" marginBottom={1}>
+          <Text color="cyanBright" bold>
+            {'  '}Global Thread Relation Graph
+          </Text>
+          <Text color="gray">
+            {threads.length} threads{'  '}
+            <Text color="green">● {statusCounts.running}</Text>{'  '}
+            <Text color="blue">✓ {statusCounts.done}</Text>{'  '}
+            <Text color="yellow">◆ {statusCounts.suspended}</Text>
+          </Text>
+        </Box>
+        <Text color="gray">{'═'.repeat(Math.max(20, cols - 12))}</Text>
+        <Box flexDirection="column" flexGrow={1}>
+          {pageLines.map((line, index) => (
+            <Text key={`overlay-${index}`} color={line.color as never}>
+              {'  '}{truncateLine(line.text, Math.max(30, cols - 16))}
+            </Text>
+          ))}
+        </Box>
+        {treeLines.length > contentHeight ? (
+          <Box marginTop={1}>
+            <Text color="gray">
+              {start + 1}-{end} / {treeLines.length}{'  '}[J/K or ↑/↓ to scroll]
+            </Text>
+          </Box>
+        ) : null}
+      </Box>
+      <Box>
+        <Text color="black" backgroundColor="white">
+          {' [Shift+G / Esc] Close '}
+          {' [J/K] Scroll '}
+        </Text>
+      </Box>
+    </Box>
+  );
+}
+
 function TuiApp({ store }: { store: TuiStore }) {
   const state = useStore(store);
   const [viewport, setViewport] = useState({
@@ -408,6 +606,9 @@ function TuiApp({ store }: { store: TuiStore }) {
   }, []);
 
   useInput((_input, key) => {
+    if (state.showGlobalOverlay) {
+      return;
+    }
     if (pendingApproval) {
       if (_input.toLowerCase() === 'y') {
         store.resolveTopApproval(true);
@@ -416,7 +617,9 @@ function TuiApp({ store }: { store: TuiStore }) {
       }
       return;
     }
-    if (key.upArrow) {
+    if (_input === 'G') {
+      store.toggleGlobalOverlay();
+    } else if (key.upArrow) {
       store.moveSelection(-1);
     } else if (key.downArrow) {
       store.moveSelection(1);
@@ -430,7 +633,7 @@ function TuiApp({ store }: { store: TuiStore }) {
       store.setTab('detail');
     } else if (_input.toLowerCase() === 'r' || _input.toLowerCase() === 'l') {
       store.setTab('runtime');
-    } else if (_input.toLowerCase() === 'g' || _input.toLowerCase() === 's') {
+    } else if (_input === 'g' || _input.toLowerCase() === 's') {
       store.setTab('global');
     } else if (_input.toLowerCase() === 'j') {
       store.scrollActivePane(1);
@@ -529,6 +732,16 @@ function TuiApp({ store }: { store: TuiStore }) {
     { total: 0, active: 0, suspended: 0, completed: 0, other: 0 },
   );
 
+  if (state.showGlobalOverlay) {
+    return (
+      <GlobalRelationOverlay
+        store={store}
+        threads={threadRows}
+        viewport={viewport}
+      />
+    );
+  }
+
   return (
     <Box flexDirection="column" paddingX={1} height={dashboardHeight}>
       <Box flexDirection="column" marginBottom={1}>
@@ -554,6 +767,7 @@ function TuiApp({ store }: { store: TuiStore }) {
           <Text>↑/↓: move selected thread</Text>
           <Text>tab/t: switch right pane tab (detail/runtime/global)</Text>
           <Text>d/r/g: jump to detail/runtime/global pane</Text>
+          <Text>Shift+G: open fullscreen global relation graph</Text>
           <Text>f: toggle thread filter (all/running only)</Text>
           <Text>j/k: scroll active right pane</Text>
           <Text>?: toggle this help panel</Text>
@@ -665,6 +879,7 @@ function TuiApp({ store }: { store: TuiStore }) {
             {' [↑/↓] Select '}
             {' [T] Switch Tab '}
             {' [D/R/G] Jump Tab '}
+            {' [Shift+G] Graph '}
             {' [F] Filter '}
             {' [J/K] Scroll '}
             {' [?] Help '}
