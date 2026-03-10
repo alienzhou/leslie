@@ -59,7 +59,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
   stderr.write(`[run] logs directory ${objective.logDir}\n`);
 
   const runtimePaths = getRuntimePaths(runtimeDir);
-  const ui: RunTui | null = enableTui ? createRunTui(title, objective.objectiveId) : null;
+  const ui: RunTui | null = enableTui ? createRunTui(title, objective.objectiveId, process.cwd()) : null;
   const handledApprovalRequests = new Set<string>();
   const activeWorkers = new Set<string>([rootThreadId]);
   let eventsOffset = 0;

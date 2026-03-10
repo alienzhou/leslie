@@ -24,6 +24,7 @@ interface ApprovalRequest {
 interface UiState {
   title: string;
   objectiveId: string;
+  cwd: string;
   selectedThreadId: string | null;
   threads: Record<string, ThreadView>;
   order: string[];
@@ -44,10 +45,11 @@ class TuiStore {
 
   private static readonly GLOBAL_LOG_MAX_LINES = 500;
 
-  public constructor(title: string, objectiveId: string) {
+  public constructor(title: string, objectiveId: string, cwd: string) {
     this.state = {
       title,
       objectiveId,
+      cwd,
       selectedThreadId: null,
       threads: {},
       order: [],
@@ -531,6 +533,9 @@ function TuiApp({ store }: { store: TuiStore }) {
         <Text>
           <Text color="gray">Threads:</Text> {statusCount.total} total (<Text color="green">{statusCount.active}</Text> running, <Text color="blue">{statusCount.completed}</Text> done) <Text color="gray">|</Text> <Text color="gray">Filter:</Text> <Text color="cyan">{state.filterMode}</Text> <Text color="gray">|</Text> <Text color="gray">Tab:</Text> <Text color="cyan">{state.activeTab}</Text>
         </Text>
+        <Text color="gray">
+          cwd: {truncateLine(state.cwd, Math.max(60, columns - 8))}
+        </Text>
       </Box>
       {state.showHelp ? (
         <Box
@@ -687,8 +692,8 @@ export interface RunTui {
   close: () => void;
 }
 
-export function createRunTui(title: string, objectiveId: string): RunTui {
-  const store = new TuiStore(title, objectiveId);
+export function createRunTui(title: string, objectiveId: string, cwd: string): RunTui {
+  const store = new TuiStore(title, objectiveId, cwd);
   const app = render(<TuiApp store={store} />);
 
   return {
