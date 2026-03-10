@@ -29,16 +29,20 @@ interface UiState {
   order: string[];
   pendingApprovals: ApprovalRequest[];
   filterMode: 'all' | 'active';
-  activeTab: 'overview' | 'logs';
+  activeTab: 'overview' | 'logs' | 'server';
   logScrollOffset: number;
   overviewScrollOffset: number;
+  serverLogScrollOffset: number;
   showHelp: boolean;
+  globalLogLines: string[];
 }
 
 class TuiStore {
   private listeners = new Set<() => void>();
 
   private state: UiState;
+
+  private static readonly GLOBAL_LOG_MAX_LINES = 500;
 
   public constructor(title: string, objectiveId: string) {
     this.state = {
@@ -52,7 +56,9 @@ class TuiStore {
       activeTab: 'overview',
       logScrollOffset: 0,
       overviewScrollOffset: 0,
+      serverLogScrollOffset: 0,
       showHelp: false,
+      globalLogLines: [],
     };
   }
 
@@ -87,6 +93,11 @@ class TuiStore {
     const nextLines = input.appendLine
       ? [...current.lines.slice(-79), input.appendLine]
       : current.lines;
+    if (input.appendLine) {
+      const globalLine = `[${input.id}] ${input.appendLine}`;
+      const nextGlobal = [...this.state.globalLogLines.slice(-(TuiStore.GLOBAL_LOG_MAX_LINES - 1)), globalLine];
+      this.state = { ...this.state, globalLogLines: nextGlobal };
+    }
     const next: ThreadView = {
       ...current,
       status: input.status ?? current.status,
@@ -204,16 +215,23 @@ class TuiStore {
   }
 
   public toggleTab(): void {
-    const nextTab = this.state.activeTab === 'overview' ? 'logs' : 'overview';
+    const nextTab =
+      this.state.activeTab === 'overview' ? 'logs' : this.state.activeTab === 'logs' ? 'server' : 'overview';
     this.state = { ...this.state, activeTab: nextTab };
     this.emit();
   }
 
-  public setTab(tab: 'overview' | 'logs'): void {
+  public setTab(tab: 'overview' | 'logs' | 'server'): void {
     if (this.state.activeTab === tab) {
       return;
     }
     this.state = { ...this.state, activeTab: tab };
+    this.emit();
+  }
+
+  public appendGlobalLog(line: string): void {
+    const nextGlobal = [...this.state.globalLogLines.slice(-(TuiStore.GLOBAL_LOG_MAX_LINES - 1)), line];
+    this.state = { ...this.state, globalLogLines: nextGlobal };
     this.emit();
   }
 
@@ -224,6 +242,15 @@ class TuiStore {
         return;
       }
       this.state = { ...this.state, logScrollOffset: nextOffset };
+      this.emit();
+      return;
+    }
+    if (this.state.activeTab === 'server') {
+      const nextOffset = Math.max(0, this.state.serverLogScrollOffset + delta);
+      if (nextOffset === this.state.serverLogScrollOffset) {
+        return;
+      }
+      this.state = { ...this.state, serverLogScrollOffset: nextOffset };
       this.emit();
       return;
     }
@@ -399,6 +426,8 @@ function TuiApp({ store }: { store: TuiStore }) {
       store.setTab('overview');
     } else if (_input.toLowerCase() === 'l') {
       store.setTab('logs');
+    } else if (_input.toLowerCase() === 's') {
+      store.setTab('server');
     } else if (_input.toLowerCase() === 'j') {
       store.scrollActivePane(1);
     } else if (_input.toLowerCase() === 'k') {
@@ -429,6 +458,12 @@ function TuiApp({ store }: { store: TuiStore }) {
   const leftStart = Math.max(0, Math.min(Math.max(0, selectedIndex), Math.max(0, threadRows.length - leftListWindowSize)));
   const leftEnd = Math.min(threadRows.length, leftStart + leftListWindowSize);
   const leftRows = threadRows.slice(leftStart, leftEnd);
+  const globalLogLines = state.globalLogLines;
+  const serverLogWindowSize = Math.max(6, bodyHeight - 8);
+  const serverLogMaxStart = Math.max(0, globalLogLines.length - serverLogWindowSize);
+  const serverLogStart = Math.max(0, serverLogMaxStart - state.serverLogScrollOffset);
+  const serverLogEnd = Math.min(globalLogLines.length, serverLogStart + serverLogWindowSize);
+  const serverLogPageLines = globalLogLines.slice(serverLogStart, serverLogEnd);
   const overviewLines = useMemo(() => {
     return threadRows.map((thread) => {
       const parentText = thread.parentId ?? '-';
@@ -494,7 +529,7 @@ function TuiApp({ store }: { store: TuiStore }) {
           <Text color="cyan"> {columns}x{rows}</Text>
         </Text>
         <Text color="gray">
-          keys: ↑/↓ select thread | tab/t switch pane | o/l jump pane | f filter | j/k scroll | ? help
+          keys: ↑/↓ select thread | tab/t switch pane | o/l/s jump pane | f filter | j/k scroll | ? help
         </Text>
       </Box>
       {state.showHelp ? (
@@ -507,8 +542,8 @@ function TuiApp({ store }: { store: TuiStore }) {
         >
           <Text color="yellowBright">Help</Text>
           <Text>↑/↓: move selected thread</Text>
-          <Text>tab/t: switch right pane tab (overview/logs)</Text>
-          <Text>o/l: jump to overview/logs pane</Text>
+          <Text>tab/t: switch right pane tab (overview/logs/server)</Text>
+          <Text>o/l/s: jump to overview/logs/server pane</Text>
           <Text>f: toggle thread filter (all/running only)</Text>
           <Text>j/k: scroll active right pane</Text>
           <Text>?: toggle this help panel</Text>
@@ -565,7 +600,11 @@ function TuiApp({ store }: { store: TuiStore }) {
           paddingX={1}
         >
           <Text color="blueBright">
-            {state.activeTab === 'overview' ? 'Relations Overview' : `Logs (${selected?.id ?? 'none'})`}
+            {state.activeTab === 'overview'
+              ? 'Relations Overview'
+              : state.activeTab === 'logs'
+                ? `Logs (${selected?.id ?? 'none'})`
+                : 'Server Logs'}
           </Text>
           {state.activeTab === 'overview' ? (
             <>
@@ -581,6 +620,19 @@ function TuiApp({ store }: { store: TuiStore }) {
               ))}
               <Text color="gray">
                 overview window: {overviewLines.length === 0 ? 0 : overviewStart + 1}-{overviewEnd} / {overviewLines.length}
+              </Text>
+            </>
+          ) : state.activeTab === 'server' ? (
+            <>
+              <Box flexDirection="column" marginBottom={1}>
+                <Text color="gray">all threads | chronological order</Text>
+                <Text color="gray">----------------------------------------</Text>
+              </Box>
+              {serverLogPageLines.map((line, index) => (
+                <Text key={`server-${index}`}>{truncateLine(line, Math.max(30, rightPaneWidth - 6))}</Text>
+              ))}
+              <Text color="gray">
+                server log: {globalLogLines.length === 0 ? 0 : serverLogStart + 1}-{serverLogEnd} / {globalLogLines.length}
               </Text>
             </>
           ) : (
@@ -632,6 +684,7 @@ function TuiApp({ store }: { store: TuiStore }) {
 
 export interface RunTui {
   updateThread: (input: { id: string; status?: string; parentId?: string | null; appendLine?: string }) => void;
+  appendGlobalLog: (line: string) => void;
   setThreadsSnapshot: (
     threads: Array<{
       id: string;
@@ -657,6 +710,7 @@ export function createRunTui(title: string, objectiveId: string): RunTui {
 
   return {
     updateThread: (input) => store.updateThread(input),
+    appendGlobalLog: (line) => store.appendGlobalLog(line),
     setThreadsSnapshot: (threads) => store.setThreadsSnapshot(threads),
     requestApproval: (input) =>
       new Promise<boolean>((resolve) => {

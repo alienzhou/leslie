@@ -129,6 +129,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         if (shouldPrintEventLogs) {
           stderr.write(`[thread:${threadId}] started\n`);
         }
+        ui?.appendGlobalLog?.(`[${threadId}] started`);
         ui?.updateThread({
           id: threadId,
           status: 'active',
@@ -160,6 +161,7 @@ export async function runRun(core: LeslieCore, flags: Record<string, unknown>) {
         if (!thread) {
           continue;
         }
+        ui?.appendGlobalLog?.(`[${threadId}] exited (${success ? 'success' : 'error'})`);
         ui?.updateThread({
           id: threadId,
           status: thread.status,
