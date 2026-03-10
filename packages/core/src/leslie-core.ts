@@ -21,6 +21,8 @@ import { buildPaths } from './utils/path.js';
 import type { Warning } from './types/cli-response.js';
 import { withRetry } from './utils/retry.js';
 
+const TERMINATED_THREAD_STATUS = new Set(['completed', 'cancelled', 'archived']);
+
 export interface LeslieCoreOptions {
   workspaceRoot: string;
   debugMode?: boolean;
@@ -199,7 +201,15 @@ export class LeslieCore {
     if (result.success) {
       const currentThread = await this.threadManager.getThread(threadId);
       if (currentThread.status === 'active') {
-        await this.threadManager.lifecycle(threadId, 'done', undefined, 'system');
+        const allThreads = await this.threadManager.listThreads();
+        const hasUnterminatedChild = allThreads.some(
+          (thread) => thread.parent_id === threadId && !TERMINATED_THREAD_STATUS.has(thread.status),
+        );
+        if (hasUnterminatedChild) {
+          await this.threadManager.lifecycle(threadId, 'suspend', 'Waiting for child threads', 'system');
+        } else {
+          await this.threadManager.lifecycle(threadId, 'done', undefined, 'system');
+        }
       }
     }
 

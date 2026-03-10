@@ -115,6 +115,45 @@ describe('core integration flow', () => {
     expect(thread.session_id).toBe('session-test');
   });
 
+  it('auto-suspends active parent when successful run leaves children active', async () => {
+    const { core } = await createCore();
+    const objective = await core.createObjective('Build API');
+    const parent = await core.spawnThread({
+      intent: 'Parent task',
+      objective: objective.objectiveId,
+      inherit: 'none',
+    });
+    await core.spawnThread({
+      intent: 'Child task',
+      objective: objective.objectiveId,
+      parentId: parent.result.thread_id,
+      inherit: 'none',
+    });
+
+    const runnerMock = vi.fn(async () => ({
+      sessionId: 'session-parent',
+      success: true,
+      result: 'ok',
+      errors: undefined,
+      durationMs: 12,
+      costUsd: 0,
+      numTurns: 1,
+    }));
+
+    (
+      core as unknown as {
+        agentRunner: { run: typeof runnerMock };
+      }
+    ).agentRunner.run = runnerMock;
+
+    await core.runAgent(parent.result.thread_id, {});
+
+    const parentThread = await core.getThread(parent.result.thread_id);
+    expect(parentThread.status).toBe('suspended');
+    const objectiveStatus = await core.getObjective(objective.objectiveId);
+    expect(objectiveStatus.status).toBe('active');
+  });
+
   it('keeps objective active when out-of-band child thread is still active', async () => {
     const { core, workspaceRoot } = await createCore();
     const objective = await core.createObjective('Build API');
