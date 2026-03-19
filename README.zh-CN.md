@@ -17,6 +17,8 @@ Leslie 是一个多线程 Agent 编排框架，基于 **人机对等协作（Hum
 Leslie 的设计理念：
 > 人类 ↔ Agent 是**对等的**，双方都可以发起、干预、求助
 
+![](./assets/example.png)
+
 ## 核心概念
 
 ### Objective（目标）

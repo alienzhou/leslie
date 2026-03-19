@@ -17,6 +17,8 @@ Traditional Agent systems:
 Leslie's design philosophy:
 > Human ↔ Agent are **equal**, both can initiate, intervene, and ask for help
 
+![](./assets/example.png)
+
 ## Core Concepts
 
 ### Objective
